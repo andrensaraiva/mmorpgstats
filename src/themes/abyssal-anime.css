@@ -1,0 +1,37 @@
+:root,
+[data-theme='abyssal-anime'] {
+  color-scheme: dark;
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-body: 'Trebuchet MS', Arial, sans-serif;
+
+  --color-page: #060809;
+  --color-page-soft: #0b0e10;
+  --color-frame: #111619;
+  --color-panel: #151a1d;
+  --color-panel-deep: #0d1113;
+  --color-panel-raised: #1a2023;
+  --color-line: #3b3427;
+  --color-line-strong: #76613b;
+  --color-gold: #c4a566;
+  --color-gold-bright: #e0c489;
+  --color-text: #d8d3c7;
+  --color-text-soft: #9f9b91;
+  --color-text-dim: #77776f;
+  --color-crimson: #7c2427;
+  --color-crimson-bright: #b44445;
+  --color-blue: #2b6172;
+  --color-blue-bright: #4c91a4;
+  --color-green: #426d4c;
+  --color-green-bright: #75a77e;
+  --color-warning: #b9783d;
+  --color-negative: #c15e57;
+  --color-positive: #80ad83;
+
+  --rarity-common: #b9b9b2;
+  --rarity-magic: #789fc7;
+  --rarity-rare: #c6aa62;
+  --rarity-unique: #ba7543;
+
+  --shadow-frame: 0 22px 70px rgb(0 0 0 / 55%);
+  --shadow-panel: 0 12px 24px rgb(0 0 0 / 26%);
+}

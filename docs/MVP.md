@@ -1,13 +1,13 @@
 # Documento de Visão do MVP
 
-- **Nome do projeto:** a definir
+- **Nome do projeto:** BuildsWar (provisório)
 - **Gênero de trabalho:** MMO sazonal assíncrono de loot e builds
 - **Plataforma inicial:** aplicação web responsiva e instalável (PWA)
 - **Status:** visão inicial para validação
 - **Versão do documento:** 0.1
 - **Data:** 30 de junho de 2026
 
-> A taxonomia de classes, habilidades, suportes, itens, crafting, endgame e temporadas está detalhada em [Referência de Conteúdo e Arquitetura Inspirada em Path of Exile 2](./POE2_REFERENCE_ARCHITECTURE.md).
+> O desenvolvimento e os testes da primeira versão jogável estão detalhados em [Planejamento do Protótipo — BuildsWar](./PROTOTYPE_PLAN.md). A taxonomia de classes, habilidades, suportes, itens, crafting, endgame e temporadas está detalhada em [Referência de Conteúdo e Arquitetura Inspirada em Path of Exile 2](./POE2_REFERENCE_ARCHITECTURE.md).
 
 ## 1. Resumo executivo
 
@@ -828,7 +828,7 @@ Sistemas candidatos, fora do MVP:
 
 Antes da produção de conteúdo, será necessário decidir:
 
-- nome e universo temático;
+- nome definitivo e universo temático;
 - identidade visual;
 - nomes e fantasias das três classes iniciais;
 - duração exata da primeira temporada de teste;

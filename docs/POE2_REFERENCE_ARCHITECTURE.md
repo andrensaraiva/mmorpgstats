@@ -1,6 +1,6 @@
 # Referência de Conteúdo e Arquitetura Inspirada em Path of Exile 2
 
-- **Projeto:** nome a definir
+- **Projeto:** BuildsWar (nome provisório)
 - **Documento relacionado:** [Documento de Visão do MVP](./MVP.md)
 - **Objetivo:** reduzir os principais sistemas de Path of Exile 2 para um MMO sazonal assíncrono
 - **Versão do documento:** 0.1
