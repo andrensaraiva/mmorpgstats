@@ -1,61 +1,115 @@
-import type { BuildPreset, SkillDefinition } from '../app/types'
-import { Panel } from '../components/Panel'
+import { BEHAVIOR, SKILLS, SUPPORTS } from '../game/content'
+import { skillRelativeDamage } from '../game/engine'
+import type { Game } from '../game/store'
+import { PageHead, Panel, PowerBar } from '../ui/atoms'
 
-interface SkillsPageProps {
-  build: BuildPreset
-  skills: SkillDefinition[]
-}
-export function SkillsPage({ build, skills }: SkillsPageProps) {
-  const activeSkills = skills.filter((skill) => build.skillIds.includes(skill.id))
+export function SkillsPage({ game }: { game: Game }) {
+  const cap = game.power.supportCap
 
   return (
-    <div className="page-stack">
-      <div className="page-heading">
-        <p className="section-kicker">Tomo de combate</p>
-        <h1>Habilidades e comportamento</h1>
-        <p>A personagem executa estas ordens automaticamente durante a tentativa.</p>
-      </div>
-
-      <Panel title="Habilidades equipadas" eyebrow={build.title}>
-        <div className="skill-list">
-          {activeSkills.map((skill, index) => (
-            <article className="skill-row" key={skill.id}>
-              <div className="skill-placeholder" aria-hidden="true">
-                {index + 1}
-              </div>
-              <div className="skill-row__main">
-                <span>{skill.kind}</span>
-                <h3>{skill.name}</h3>
-                <p>{skill.description}</p>
-              </div>
-              <dl className="skill-row__details">
-                <div>
-                  <dt>Custo</dt>
-                  <dd>{skill.cost}</dd>
-                </div>
-                <div>
-                  <dt>Recarga</dt>
-                  <dd>{skill.cooldown}</dd>
-                </div>
-              </dl>
-            </article>
-          ))}
+    <>
+      <PageHead title="Habilidades" crumb="Encaixe suportes e veja o dano mudar" />
+      <Panel title="Poder de combate">
+        <PowerBar power={game.power} knownDps={game.knownDps} />
+        <div className="tiny muted mt8">
+          Suportes de dano aumentam o DPS do golpe principal — e portanto reduzem o tempo das dungeons. O nó
+          <b> Estrategista</b> na árvore libera um soquete extra.
         </div>
       </Panel>
 
-      <Panel title="Prioridades de ação" eyebrow="Ordem configurada">
-        <ol className="behavior-list">
-          {build.behavior.map((rule, index) => (
-            <li key={rule}>
-              <span>Prioridade {index + 1}</span>
-              <strong>{rule}</strong>
-            </li>
-          ))}
-        </ol>
-        <p className="form-note">
-          A edição detalhada das condições será conectada quando o motor determinístico estiver disponível.
-        </p>
+      <Panel title="Habilidades equipadas">
+        {SKILLS.map((sk) => {
+          const socketed = game.state.sockets[sk.id] ?? []
+          const isDmg = sk.damageMult > 0
+          const compat = SUPPORTS.filter((s) => s.match.some((t) => sk.tags.includes(t)))
+          const boxes = Array.from({ length: cap }, (_, i) => socketed[i] ?? null)
+
+          return (
+            <div className="skill-card" key={sk.id}>
+              <div className="skill-card__top">
+                <div className={`skill-gem gem--${sk.type}`}>{sk.glyph}</div>
+                <div className="skill-main">
+                  <div className="nm">{sk.name}</div>
+                  <div className="meta">{sk.meta}</div>
+                  <div className="desc">{sk.desc}</div>
+                  <div className="tags">
+                    {sk.tags.map((t) => (
+                      <span className="tag" key={t}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="skill-dps">
+                  <div className="sd-k">{isDmg ? 'Dano relativo' : 'Tipo'}</div>
+                  <div className="sd-v" style={isDmg ? undefined : { color: 'var(--teal-hi)', fontSize: 14 }}>
+                    {isDmg ? skillRelativeDamage(sk.id, game.state.sockets).toFixed(2) : 'apoio'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="socket-area">
+                <div className="socket-row">
+                  <span className="socket-lbl">Suportes</span>
+                  {boxes.map((sid, i) => {
+                    if (sid) {
+                      const sup = SUPPORTS.find((s) => s.id === sid)!
+                      return (
+                        <button
+                          className="socket filled"
+                          key={i}
+                          onClick={() => game.toggleSocket(sk.id, sid)}
+                          title="Clique para remover"
+                        >
+                          <span className="s-gem" />
+                          {sup.name} <span className="sd-note">{sup.note}</span>
+                        </button>
+                      )
+                    }
+                    return (
+                      <div className="socket empty" key={i}>
+                        soquete vazio
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="palette">
+                  <div className="pal-lbl">Banca de suportes compatíveis (clique para encaixar/remover)</div>
+                  {compat.map((s) => {
+                    const on = socketed.includes(s.id)
+                    const full = !on && socketed.length >= cap
+                    return (
+                      <button
+                        key={s.id}
+                        className={`pal-chip${on ? ' on' : ''}${full ? ' off-limit' : ''}`}
+                        onClick={() => game.toggleSocket(sk.id, s.id)}
+                        disabled={full}
+                      >
+                        <span className="s-gem" />
+                        {s.name} <span className="pd">{s.note}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </Panel>
-    </div>
+
+      <Panel title="Regras de comportamento">
+        <div className="tiny muted mb8">
+          Sem linguagem livre: você escolhe gatilhos, condições e ações em listas controladas. O servidor obedece a
+          estas prioridades.
+        </div>
+        {BEHAVIOR.map((b, i) => (
+          <div className="rule" key={i}>
+            <span className="when">{b.when}</span>
+            <span className="arrow">⟶</span>
+            <span className="then">{b.then}</span>
+          </div>
+        ))}
+      </Panel>
+    </>
   )
 }

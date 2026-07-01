@@ -3,11 +3,22 @@
 - **Nome do projeto:** BuildsWar (provisório)
 - **Gênero de trabalho:** MMO sazonal assíncrono de loot e builds
 - **Plataforma inicial:** aplicação web responsiva e instalável (PWA)
-- **Status:** visão inicial para validação
-- **Versão do documento:** 0.1
-- **Data:** 30 de junho de 2026
+- **Status:** visão em evolução; protótipo consolidado
+- **Versão do documento:** 0.2
+- **Data:** 30 de junho de 2026 (revisado em 01 de julho de 2026)
 
 > O desenvolvimento e os testes da primeira versão jogável estão detalhados em [Planejamento do Protótipo — BuildsWar](./PROTOTYPE_PLAN.md). A taxonomia de classes, habilidades, suportes, itens, crafting, endgame e temporadas está detalhada em [Referência de Conteúdo e Arquitetura Inspirada em Path of Exile 2](./POE2_REFERENCE_ARCHITECTURE.md).
+
+> **Revisão 0.2 (01/07/2026) — decisões incorporadas.** A partir do protótipo consolidado, de referências de Path of Exile 2 e de uma [pesquisa de gênero](./ARPG_RESEARCH.md) (PoE2, Diablo 4, Last Epoch), o MVP adota:
+> - **Build 100% do jogador** — sem arquétipos pré-prontos; poder derivado de equipamento + árvore + suportes.
+> - **Habilidades por arma e classe** — a arma equipada define o leque de skills (estilo PoE2); suportes sem restrição de classe (só atributo/tag).
+> - **Equipamento profundo** — slots completos (cinto, frascos, set de armas), **baú/stash em grade**, descrições ricas (qualidade, defesas, requisitos, mais afixos, corrompido).
+> - **Crafting em dois trilhos** — gamble (orbes + corrupção Vaal) **e** determinístico (bancada/runas), mais um **afixo excepcional que só dropa**.
+> - **Números descobertos** — o DPS real só é revelado ao testar a build numa dungeon.
+> - **Mercado assíncrono com compra imediata** e busca avançada, sem fricção de sussurro/golpes (vantagem nativa do nosso modelo assíncrono).
+> - **Facções farmar × negociar** — não obrigar o trade (inspirado em Last Epoch).
+> - **QoL central desde cedo** — loot filter e comparação de itens.
+> - **UI/UX** — estética nostálgica mantida como identidade; **arquitetura e posição de botões seguem as convenções modernas de ARPG** (ver [UX & Arquitetura de Informação](./UX_IA.md)).
 
 ## 1. Resumo executivo
 
@@ -166,7 +177,7 @@ O MVP terá três classes-base, representando inicialmente:
 - combate à distância;
 - magia.
 
-Os nomes e a identidade temática serão definidos posteriormente. A classe oferece uma direção inicial, mas não deve determinar uma única build correta.
+Os nomes e a identidade temática serão definidos posteriormente. A classe oferece uma direção inicial, mas não deve determinar uma única build correta. O plano de **misturar os arquétipos mais amados do gênero** (investida, invocador, elemental, arqueiro, DoT, transformação, totem) e a evolução do motor para suportá-los estão em [Motor, Balanceamento e Mix de Classes/Builds](./COMBAT_AND_ARCHETYPES.md).
 
 ### 8.2 Atributos
 
@@ -197,6 +208,8 @@ Nós, conexões e efeitos serão definidos por dados para permitir expansão sem
 
 Cada personagem poderá equipar habilidades ativas, persistentes e suportes. Além dessas escolhas, o jogador configurará regras simples de comportamento.
 
+O **leque de habilidades disponíveis depende da arma equipada e da classe** (padrão inspirado em Path of Exile 2): equipar uma arma de um tipo libera as habilidades daquele tipo; as skills também liberam por faixas de nível. Isso amarra loot ↔ build ↔ forma de lutar. Ver [Design de Equipamento & Habilidades](./EQUIPMENT_SKILLS_DESIGN.md).
+
 Exemplos:
 
 ```text
@@ -207,7 +220,7 @@ Se mana estiver abaixo de 20% → usar ataque básico
 Ao bloquear um ataque → usar contra-ataque
 ```
 
-O MVP não terá uma linguagem de programação livre. O jogador escolherá gatilhos, condições e ações em listas controladas pela interface. Suportes modificarão habilidades compatíveis por meio de tags, com limite inicial de dois suportes por habilidade.
+O MVP não terá uma linguagem de programação livre. O jogador escolherá gatilhos, condições e ações em listas controladas pela interface. Suportes modificarão habilidades compatíveis por meio de tags, **sem restrição de classe** (basta atender ao requisito de atributo/tag) — a liberdade de combinação que o público de ARPG valoriza. O limite de suportes por habilidade cresce com nível/árvore.
 
 ### 8.5 Loadouts
 
@@ -221,23 +234,21 @@ O jogador poderá salvar configurações de build para alternar entre, por exemp
 
 Alterações feitas depois do início de uma tentativa não afetam a tentativa em andamento. O servidor registra um snapshot completo da build no momento da entrada.
 
+Como não há execução manual de combate, **respec da árvore e troca de habilidades são baratos** e **não exigem rejogar a campanha** para experimentar outra build — atacando diretamente o cansaço de "refazer tudo para testar uma ideia" apontado como dor em ARPGs concorrentes.
+
 ## 9. Equipamentos e loot
 
 ### 9.1 Slots iniciais
 
-O MVP usará nove slots:
+Para paridade com o padrão do gênero, o MVP usará (evolução dos nove iniciais):
 
-- arma;
-- mão secundária;
-- cabeça;
-- torso;
-- luvas;
-- botas;
-- amuleto;
-- anel 1;
-- anel 2.
+- arma e mão secundária (com **set de armas alternável** — dois conjuntos);
+- cabeça, torso, luvas, botas;
+- amuleto, anel 1, anel 2;
+- **cinto**;
+- **dois frascos** (vida e mana).
 
-Armas de duas mãos desativam o slot de mão secundária.
+Armas de duas mãos desativam o slot de mão secundária. Um **baú (stash) em grade, com abas**, compartilhado por liga, guarda o excedente; o inventário do corpo é do personagem. Ver [Design de Equipamento & Habilidades](./EQUIPMENT_SKILLS_DESIGN.md).
 
 ### 9.2 Estrutura do item
 
@@ -247,6 +258,9 @@ Cada item será composto por:
 Tipo-base
 + nível do item
 + raridade
++ qualidade (0–20%)
++ defesas da base (armadura / evasão / escudo de energia)
++ requisitos (nível, força, destreza, inteligência)
 + atributo implícito opcional
 + prefixos
 + sufixos
@@ -268,18 +282,17 @@ Os drops devem permitir três reações diferentes:
 2. guardar porque o item inspira outra build ou personagem;
 3. vender porque o item é mais valioso para outro jogador.
 
-O jogo precisa oferecer filtros de loot e comparação clara entre item equipado e item encontrado.
+O jogo precisa oferecer **filtros de loot e comparação clara entre item equipado e item encontrado desde cedo** — QoL central, não remendo (a ausência disso foi a principal dor de itemização em concorrentes). Para garantir caça a *gear* (e não só a moeda), haverá um **afixo excepcional que só dropa** — uma versão mais forte de um modificador, impossível de craftar.
 
 ### 9.4 Crafting inicial
 
-O crafting do MVP será deliberadamente controlado. As operações iniciais serão:
+O crafting do MVP terá **dois trilhos**, cobrindo os dois perfis de jogador (quem gosta de arriscar e quem gosta de mirar), lição direta da [pesquisa de gênero](./ARPG_RESEARCH.md):
 
-- desmontar itens para obter materiais;
-- melhorar valores existentes dentro de suas faixas;
-- substituir um modificador por outro aleatório;
-- adicionar um modificador quando houver espaço permitido.
+- **Trilho gamble** — orbes (transmutação, alteração, régio, exaltado, caos, divino) e **corrupção Vaal**. Emoção e topo; já implementado no protótipo.
+- **Trilho determinístico** — uma **bancada/runas** para *mirar* um afixo específico, melhorar valores dentro das faixas e adicionar um modificador quando houver espaço (ao estilo Last Epoch / tempering da D4).
+- Além disso: **desmontar itens** para obter materiais.
 
-Crafting avançado, corrupção, receitas complexas e criação determinística profunda ficam para versões posteriores.
+Receitas muito complexas e criação determinística profunda de topo ficam para versões posteriores; a combinação gamble + determinístico já cobre os dois públicos.
 
 ## 10. Simulação de combate
 
@@ -346,6 +359,10 @@ Exemplo de diagnóstico:
 
 > Você chegou ao chefe em 3m42s, mas recebeu 68% do dano final como fogo e possuía somente 38% de resistência a fogo.
 
+### 10.5 Números descobertos
+
+Para dar profundidade de números "conforme o jogador descobre", o **DPS real** de uma build só é conhecido depois de **testá-la numa dungeon**. Antes disso, a interface mostra uma **estimativa em faixa**. O valor real fica atrelado à assinatura (*fingerprint*) da build; trocar item, craftar ou mexer na árvore invalida o número e exige novo teste. Vida efetiva e resistências continuam exatas. (Já implementado no protótipo.)
+
 ## 11. Conteúdo PvE
 
 ### 11.1 Campanha
@@ -406,24 +423,31 @@ O tema será original e definido posteriormente. A função dessa mecânica no M
 
 ### 12.1 Mercado por liga
 
-Cada liga possui mercado e moeda isolados. O MVP usará anúncios com preço fixo, sem sistema de leilão por lances.
+Cada liga possui mercado e moeda isolados. O MVP usará **anúncios com preço fixo e compra imediata (buyout) assíncrona** — sem leilão por lances e **sem negociação manual**. Como o combate é assíncrono e o servidor é autoridade, a compra confirma na hora, o item entra no baú e a moeda é debitada, **sem sussurrar vendedor, sem status online e sem golpes de "troca na janela"**. Isto transforma a maior dor do gênero (fricção de trade do PoE) em vantagem nativa nossa — ver [pesquisa de gênero](./ARPG_RESEARCH.md).
 
 O mercado deverá permitir:
 
-- anunciar item;
-- comprar item;
+- anunciar e comprar item (buyout imediato);
 - cancelar anúncio;
-- pesquisar por tipo-base;
-- filtrar raridade, nível e modificadores;
-- ordenar por preço e data;
-- comparar o item com o equipado;
+- **busca avançada**: por tipo-base, raridade, nível e qualidade; por **stats em faixa min–max** (dano, crítico, DPS físico/elemental, armadura, evasão, escudo de energia, bloqueio, recurso, soquetes); por **requisitos** (nível, força, destreza, inteligência); e por **família de afixo/tier**;
+- ordenar por preço e data; salvar buscas;
+- **comparar o item com o equipado** (delta inline);
 - consultar histórico básico de preço.
 
 ### 12.2 Troca direta
 
 A troca direta entre jogadores não fará parte do MVP. Concentrar transações no mercado reduz golpes, duplicação, comércio externo e complexidade de suporte.
 
-### 12.3 Sumidouros econômicos
+### 12.3 Escolha entre farmar e negociar (facções)
+
+Para não **obrigar** o trade (crítica recorrente ao PoE) sem tirar o mercado de quem gosta dele, o jogador escolherá entre dois caminhos, inspirados nas facções de Last Epoch:
+
+- **Autossuficiente** — sem acesso ao mercado, em troca de **drops melhores e direcionamento** de loot;
+- **Mercador** — acesso pleno ao mercado da liga.
+
+A escolha é por personagem/liga e mantém o item hunt íntegro para ambos os perfis. A troca acarreta um pequeno custo (moeda de favor ganha jogando), que também limita bots e manipulação.
+
+### 12.4 Sumidouros econômicos
 
 Para controlar inflação e excesso de itens, o MVP terá:
 
@@ -597,6 +621,10 @@ Princípios:
 - nenhum cálculo competitivo depende do dispositivo do jogador.
 
 Uma versão para lojas poderá reutilizar a aplicação web empacotada, sem criar outro jogo ou servidor.
+
+### 17.1 Identidade visual × convenção de interface
+
+Decisão de rumo (detalhada em [UX & Arquitetura de Informação](./UX_IA.md)): a **estética** dark-fantasy com sabor de portal clássico de MMORPG é **mantida como identidade** — é diferencial e é atemporal. Mas a **arquitetura de informação e a posição dos botões seguem as convenções modernas de ARPG** que o público já domina (manequim, baú em grade, tooltip com comparação, painel de habilidades por arma, árvore em foco), porque fugir da convenção sem motivo custa intuição e retenção. Em resumo: **nostalgia na moldura, convenção no fluxo**, com uma fronteira clara entre o **hub/portal** (lobby da liga) e as telas do **loop de jogo**.
 
 ## 18. Telas essenciais
 
@@ -781,7 +809,7 @@ O MVP será considerado funcional quando um jogador puder:
 ### Etapa 2 — Vertical slice
 
 - interface web responsiva;
-- três builds demonstrativas;
+- builds montadas pelo próprio jogador (sem arquétipos pré-prontos), com poder derivado de equipamento, árvore e suportes;
 - drops aleatórios;
 - inventário;
 - uma derrota solucionável por alteração de build;

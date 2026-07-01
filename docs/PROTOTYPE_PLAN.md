@@ -4,9 +4,11 @@
 - **Objetivo:** validar o loop de montar uma build, falhar de forma compreensível, ajustar a estratégia e vencer
 - **Plataforma:** aplicação web responsiva com interface presente desde o primeiro marco
 - **Versão planejada:** protótipo 0.1
-- **Status:** Marco 0 parcialmente concluído; interface demonstrativa disponível
-- **Data:** 30 de junho de 2026
+- **Status:** protótipo único consolidado (React na raiz) com motor de dados, crafting e mecânica de "números descobertos"; ver [Handoff da consolidação](./HANDOFF.md)
+- **Data:** 30 de junho de 2026 (atualizado em 01 de julho de 2026)
 - **Documento relacionado:** [Documento de Visão do MVP](./MVP.md)
+
+> **Atualização 01/07/2026 — decisão do dono.** Os dois protótipos anteriores foram unificados em **um só** (app React na raiz). Mudanças de rumo que este documento passa a refletir: (1) **não há builds pré-prontas** — a build sai 100% do que o player equipa, aloca e socketa; (2) **equipamento é o carro-chefe**, com crafting real (orbes + corrupção Vaal) antecipado para o protótipo; (3) **números descobertos** — o DPS real só é revelado ao testar numa dungeon, antes disso mostra-se uma estimativa em faixa.
 
 ## 1. Resultado esperado
 
@@ -53,10 +55,10 @@ Depois de concluir a dungeon, o jogador demonstra interesse em testar outra buil
 ### 3.1 Personagem
 
 - uma personagem feminina com apresentação provisória de fantasia sombria;
-- um arquétipo marcial identificado internamente por id neutro e estável;
+- uma classe marcial identificada internamente por id neutro e estável, que dá só uma direção inicial (origem da árvore) — **não** uma build pronta;
 - nível fixo, sem experiência ou progressão de campanha;
 - atributos essenciais: vida, recurso, dano físico, velocidade, armadura, bloqueio e resistência a fogo;
-- três builds iniciais: equilibrada, ofensiva e defensiva.
+- **sem builds pré-prontas.** O poder é 100% derivado do que o player equipa, aloca na árvore e socketa. Não há mais os arquétipos "equilibrada/ofensiva/defensiva"; qualquer perfil (mais dano, mais defesa, mais resistência) é resultado das escolhas, não de uma opção de menu.
 
 Os nomes, a ilustração e a fantasia da personagem pertencem ao pacote de apresentação. As fórmulas de combate não dependerão do tema.
 
@@ -87,16 +89,24 @@ Os nomes, a ilustração e a fantasia da personagem pertencem ao pacote de apres
 
 A árvore reduzida não pretende validar o balanceamento de 45 nós. Ela deverá validar se navegar, planejar caminhos e observar atributos mudarem é uma atividade interessante por si mesma.
 
-### 3.4 Equipamentos e loot
+### 3.4 Equipamentos e loot — o carro-chefe
 
-- seis slots habilitados: arma, mão secundária, cabeça, torso, amuleto e anel;
-- aproximadamente 10 tipos-base;
-- três raridades: comum, mágico e raro;
-- aproximadamente 12 famílias de modificadores;
-- dois itens únicos manuais que alteram uma decisão de build;
-- comparação entre item equipado e item selecionado;
-- inventário pequeno, sem baú, crafting, venda ou mercado;
-- ícone compartilhado por tipo-base e arte própria opcional para item único.
+O equipamento é o sistema central do protótipo e recebeu profundidade além do escopo mínimo original:
+
+- nove slots do manequim (arma, secundária, cabeça, torso, luvas, botas, amuleto, dois anéis);
+- ~12 tipos-base e quatro raridades (comum, mágico, raro, único);
+- ~13 famílias de afixos (prefixos/sufixos) com **tiers e faixas sorteáveis**;
+- inventário/baú com todos os drops; equipar, desequipar e trocar direto no manequim;
+- tooltips ricos (implícito + afixos com tier + flavor de único);
+- **crafting real (bancada de orbes):** transmutação, alteração, régio, exaltado, caos, divino e **corrupção Vaal** (irreversível). Cada operação consome moedas e **gera uma nova instância do item**, invalidando o DPS medido;
+- um item único manual (o "Guarda-Chama", anel de fogo) que resolve a derrota por fogo;
+- ícone compartilhado por tipo-base.
+
+> A corrupção e o crafting mais profundo estavam previstos para depois no MVP; foram antecipados no protótipo por decisão do dono ("as coisas que fazem a diferença"). O mercado entre jogadores também está presente (tabela por preço fixo).
+
+### 3.4.1 Números descobertos
+
+Para dar "muitos números, mas conforme o player descobre": o **DPS real** de uma build só é conhecido depois de **testá-la numa dungeon**. Antes disso, a leitura de poder mostra uma **estimativa em faixa (±15%)**. O valor real fica atrelado ao *fingerprint* da build (equipado + alocação + soquetes); trocar item, craftar ou mexer na árvore invalida o número e exige novo teste. Vida efetiva e resistências continuam exatas.
 
 ### 3.5 Dungeon
 
@@ -561,47 +571,35 @@ O primeiro entregável utilizável será uma interface navegável com a estrutur
 
 ## 15. Estado implementado e validado
 
-### 15.1 Implementado
+### 15.1 Implementado (protótipo único, 01/07/2026)
 
-- aplicação React e TypeScript criada com Vite;
-- tema `abyssal-anime` controlado por variáveis semânticas de CSS;
-- estrutura visual inspirada em portais clássicos de MMORPG;
-- layout responsivo sem dependência de imagens;
-- navegação entre visão geral, personagem, equipamentos, habilidades, árvore e dungeon;
-- três builds demonstrativas com atributos e comportamentos diferentes;
-- seis slots de equipamento e inventário com troca de itens;
-- três habilidades e prioridades de comportamento apresentadas na interface;
-- tentativa demonstrativa com estado de execução e relatório diferente por build;
-- árvore passiva com 18 nós, conexões, notáveis e keystones;
-- limite de oito pontos passivos;
-- bloqueio de alocação desconectada;
-- bloqueio de reembolso que quebraria um caminho já alocado;
-- bônus da árvore refletidos nos atributos apresentados;
-- três caminhos provisórios de Ascendência;
-- limite de dois pontos de Ascendência e troca de caminho com reset;
-- acesso direto a uma seção por parâmetro de URL;
-- servidor local de desenvolvimento disponível para teste.
+- **um só** protótipo: app React + TypeScript (Vite) na raiz; `prototype-claude/` e a `src/` antiga foram removidos;
+- núcleo de jogo separado da UI em `src/game/` (`types.ts`, `content.ts`, `engine.ts` puro, `store.ts`);
+- visual POE dark-fantasy full-width portado (`src/styles/global.css`), sem imagens;
+- navegação entre Portal, Personagem, Habilidades, Equipamento, Árvore, Masmorra e Mercado;
+- **sem builds pré-prontas:** poder 100% derivado de equipado + árvore + suportes;
+- **equipamento profundo:** 9 slots, ~12 bases, 4 raridades, ~13 afixos com tiers/faixas, inventário/baú, equipar/trocar;
+- **crafting:** orbes (transmutação, alteração, régio, exaltado, caos, divino) e **corrupção Vaal**, consumindo moedas e gerando novas instâncias;
+- **números descobertos:** DPS estimado em faixa até ser medido numa dungeon; medição atrelada ao fingerprint da build;
+- habilidades com soquetes de suporte (o golpe principal multiplica o DPS) e regras de comportamento;
+- árvore passiva com zoom/pan (SVG), conexões obrigatórias, notáveis e keystones, limite de pontos, bloqueio de alocação desconectada e de reembolso que quebra caminho;
+- masmorra com tentativa assíncrona, tempo que escala com o DPS, sobrevivência por res. a fogo e relatório que **revela o DPS real**;
+- mercado (tabela de anúncios por preço fixo).
 
 ### 15.2 Validação técnica concluída
 
-- verificação de tipos TypeScript sem erros;
-- nove testes automatizados aprovados;
-- testes específicos para conexão, reembolso, restrição de Ascendência e aplicação de bônus;
-- build de produção concluído;
-- auditoria de dependências sem vulnerabilidades conhecidas no momento da instalação;
-- inspeção visual da página inicial e da árvore em dimensões de desktop e celular;
-- busca automatizada sem emojis nos textos do projeto;
-- `git diff --check` sem erros de whitespace.
+- `npm run typecheck` sem erros;
+- `npm test` — 18 testes aprovados (`src/game/engine.test.ts` + `src/App.test.tsx`);
+- testes específicos: agregação de poder, suportes, soquetes, anel de fogo, tempo/sobrevivência de dungeon, fingerprint, crafting (transmutação, bloqueio de corrompido, Vaal, imutabilidade da entrada), fluxo estimativa→DPS real e craft pela UI;
+- `npm run build` (tsc + vite) concluído.
 
 ### 15.3 Ainda não validado
 
 - diversão do loop central com jogadores externos;
-- compreensão da árvore sem orientação;
-- motor de combate determinístico;
-- impacto de equipamentos e talentos no resultado da dungeon;
+- **motor de combate determinístico por ticks** (hoje o DPS é fórmula agregada, não simulação tick a tick);
+- balanceamento dos afixos/tiers e da escala de tempo de dungeon;
 - persistência local ou online;
 - autenticação e autoridade do servidor;
-- equilíbrio dos nós e das três builds;
 - métricas de retenção ou repetição;
 - acessibilidade completa com teclado e leitores de tela;
 - comportamento em uma variedade maior de navegadores e aparelhos reais.

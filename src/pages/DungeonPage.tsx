@@ -1,143 +1,220 @@
-import type { AttemptState, BuildPreset, DungeonReport } from '../app/types'
-import { Panel } from '../components/Panel'
+import { useEffect, useRef, useState } from 'react'
+import { DUNGEONS, getBase } from '../game/content'
+import { dungeonOutcome } from '../game/engine'
+import type { AttemptResult, Game } from '../game/store'
+import { fmtInt, fmtTime, rarClass } from '../ui/format'
+import { PageHead, Panel, PowerBar } from '../ui/atoms'
 
-interface DungeonPageProps {
-  build: BuildPreset
-  attemptState: AttemptState
-  report: DungeonReport | null
-  onStart: () => void
-  onReset: () => void
-}
-const numberFormatter = new Intl.NumberFormat('pt-BR')
+export function DungeonPage({ game }: { game: Game }) {
+  const { state, power } = game
+  const dungeon = DUNGEONS.find((d) => d.id === state.selectedDungeon)!
+  const outcome = dungeonOutcome(dungeon, power)
 
-export function DungeonPage({ build, attemptState, report, onStart, onReset }: DungeonPageProps) {
+  const [progress, setProgress] = useState(0)
+  const timer = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => window.clearInterval(timer.current), [])
+
+  const run = () => {
+    game.dispatch({ type: 'attemptRun' })
+    setProgress(0)
+    const realMs = Math.max(900, Math.min(2600, outcome.seconds * 7))
+    const stepMs = 40
+    const steps = Math.max(6, Math.round(realMs / stepMs))
+    let i = 0
+    timer.current = window.setInterval(() => {
+      i += 1
+      setProgress(Math.min(100, (i / steps) * 100))
+      if (i >= steps) {
+        window.clearInterval(timer.current)
+        const result: AttemptResult = {
+          dungeonId: dungeon.id,
+          win: outcome.survivable,
+          dps: power.dps,
+          seconds: outcome.seconds,
+          fireRes: power.fireRes,
+          fireReq: dungeon.fireReq,
+        }
+        // Rodar a dungeon "descobre" o DPS real do fingerprint atual.
+        game.dispatch({
+          type: 'attemptFinish',
+          result,
+          measured: { fingerprint: game.currentFingerprint, dps: power.dps },
+        })
+      }
+    }, stepMs)
+  }
+
   return (
-    <div className="page-stack">
-      <div className="page-heading">
-        <p className="section-kicker">Contrato de expedição</p>
-        <h1>Forja Abandonada</h1>
-        <p>Uma instalação esquecida onde sentinelas de ferro ainda protegem o coração da forja.</p>
-      </div>
+    <>
+      <PageHead title="Masmorra" crumb="Tentativa assíncrona — o tempo escala com a força do herói" />
+      <Panel title="Poder de combate">
+        <PowerBar power={power} knownDps={game.knownDps} />
+        <div className="tiny muted mt8">
+          O tempo estimado cai conforme seu DPS sobe. Mas se a res. a fogo ficar abaixo do exigido, a tentativa termina
+          em morte, por mais dano que você tenha. <b>Concluir a dungeon revela o DPS real.</b>
+        </div>
+      </Panel>
 
-      <div className="dungeon-layout">
-        <Panel title="Informações da dungeon" eyebrow="Dificuldade de teste 12">
-          <dl className="dungeon-facts">
-            <div>
-              <dt>Encontros</dt>
-              <dd>Dois grupos, uma elite e um chefe</dd>
-            </div>
-            <div>
-              <dt>Tipos de dano</dt>
-              <dd>Físico e fogo</dd>
-            </div>
-            <div>
-              <dt>Seed</dt>
-              <dd>BW-0017</dd>
-            </div>
-            <div>
-              <dt>Build registrada</dt>
-              <dd>{build.name}</dd>
-            </div>
-          </dl>
-        </Panel>
+      <Panel title="Escolher destino">
+        <div className="dsel">
+          {DUNGEONS.map((d) => {
+            const info = dungeonOutcome(d, power)
+            const etaCls = info.survivable ? '' : 'eta-warn'
+            return (
+              <button
+                key={d.id}
+                className={`dcard${d.id === state.selectedDungeon ? ' sel' : ''}`}
+                onClick={() => game.selectDungeon(d.id)}
+              >
+                {d.fireThreat ? <span className="badge-risk">ÍGNEO · res≥{d.fireReq}%</span> : null}
+                <div className="dbiome">
+                  {d.biome} · Nv {d.lvl}
+                  {d.season ? ' · SAZONAL' : ''}
+                </div>
+                <div className="dname">{d.name}</div>
+                <div className="dmods">
+                  {d.mods.map((m) => (
+                    <span className="dmod" key={m}>
+                      {m}
+                    </span>
+                  ))}
+                </div>
+                <div className="ddesc">{d.desc}</div>
+                <div className="dcard__eta">
+                  <span className={`etak ${etaCls}`}>
+                    {info.survivable ? 'Tempo estimado' : 'Tempo — mas você morre no fogo'}
+                  </span>
+                  <span className={`etav ${etaCls}`}>{fmtTime(info.seconds)}</span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </Panel>
 
-        <Panel title="Preparação atual" eyebrow={build.title}>
-          <div className="readiness-block">
-            <div>
-              <span>Resistência a fogo</span>
-              <strong>{build.stats.fireResistance}%</strong>
+      <section className="panel">
+        <div className="panel__head">
+          <span className="ph-l">Enviar Herói</span>
+        </div>
+        <div className="panel__body">
+          {state.attemptPhase === 'running' ? (
+            <div className="attempt-box">
+              <div className="progress-label">Simulando combate…</div>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${progress}%` }} />
+              </div>
+              <div className="snap">
+                tempo simulado {fmtTime((progress / 100) * outcome.seconds)} · {dungeon.name}
+              </div>
             </div>
-            <div>
-              <span>Poder de ataque</span>
-              <strong>{build.stats.attackPower}</strong>
-            </div>
-            <p>{build.warning}</p>
-          </div>
-        </Panel>
-      </div>
-
-      {attemptState === 'idle' ? (
-        <section className="attempt-console">
-          <div>
-            <span className="attempt-console__label">Personagem disponível</span>
-            <h2>Registrar snapshot e iniciar tentativa</h2>
-            <p>Esta primeira versão usa um resultado demonstrativo para validar o fluxo da interface.</p>
-          </div>
-          <button className="button button--primary" type="button" onClick={onStart}>
-            Iniciar tentativa
-          </button>
-        </section>
-      ) : null}
-
-      {attemptState === 'running' ? (
-        <section className="attempt-console attempt-console--running" aria-live="polite">
-          <div>
-            <span className="attempt-console__label">Tentativa em andamento</span>
-            <h2>Simulando encontros</h2>
-            <p>O protótipo está preparando o relatório da build {build.name.toLowerCase()}.</p>
-          </div>
-          <div className="simulation-meter" aria-hidden="true">
-            <span />
-          </div>
-        </section>
-      ) : null}
-
-      {attemptState === 'complete' && report ? (
-        <Panel
-          title={`Resultado: ${report.result}`}
-          eyebrow={`Duração ${report.duration}`}
-          className={report.result === 'Vitória' ? 'result-panel result-panel--victory' : 'result-panel result-panel--defeat'}
-          action={
-            <button className="button button--secondary" type="button" onClick={onReset}>
-              Preparar nova tentativa
-            </button>
-          }
-        >
-          <div className="report-headline">
-            <h3>{report.headline}</h3>
-            <p>{report.analysis}</p>
-          </div>
-
-          <div className="report-grid">
-            <div>
-              <span>Dano causado</span>
-              <strong>{numberFormatter.format(report.damageDealt)}</strong>
-            </div>
-            <div>
-              <span>DPS médio</span>
-              <strong>{report.averageDps}</strong>
-            </div>
-            <div>
-              <span>Dano físico recebido</span>
-              <strong>{numberFormatter.format(report.physicalDamageTaken)}</strong>
-            </div>
-            <div>
-              <span>Dano de fogo recebido</span>
-              <strong>{numberFormatter.format(report.fireDamageTaken)}</strong>
-            </div>
-            <div>
-              <span>Cura total</span>
-              <strong>{numberFormatter.format(report.healing)}</strong>
-            </div>
-            <div>
-              <span>Inimigos derrotados</span>
-              <strong>{report.enemiesDefeated}</strong>
-            </div>
-          </div>
-
-          {report.reward ? (
-            <div className="reward-block">
-              <span>Recompensa demonstrativa</span>
-              <strong>{report.reward}</strong>
-            </div>
+          ) : state.attemptPhase === 'report' && state.attemptResult ? (
+            <Report game={game} />
           ) : (
-            <div className="reward-block reward-block--empty">
-              <span>Recompensa</span>
-              <strong>O chefe não foi derrotado</strong>
+            <div className="attempt-box">
+              <div className="eyebrow">Destino selecionado</div>
+              <div className="attempt-title">{dungeon.name}</div>
+              <div className="snap">
+                DPS estimado {fmtInt(power.dps)} · res.fogo {power.fireRes}% · seed 0x9F3C
+              </div>
+              <div className="snap mt4">
+                tempo estimado: <b className="teal">{fmtTime(outcome.seconds)}</b>
+                {outcome.survivable ? '' : <b className="blood"> · mas morte provável por fogo</b>}
+              </div>
+              <div className="attempt-actions">
+                <button className="btn btn--blood btn--lg" onClick={run}>
+                  Enviar Herói
+                </button>
+              </div>
+              {outcome.survivable ? (
+                <div className="tiny muted">O servidor cria um snapshot imutável e simula. Espera de teste reduzida.</div>
+              ) : (
+                <div className="tiny blood">
+                  Aviso: res. a fogo {power.fireRes}% &lt; exigido {dungeon.fireReq}%. Alto risco de morte.
+                </div>
+              )}
             </div>
           )}
-        </Panel>
-      ) : null}
+        </div>
+      </section>
+    </>
+  )
+}
+
+function Report({ game }: { game: Game }) {
+  const r = game.state.attemptResult!
+  const dungeon = DUNGEONS.find((d) => d.id === r.dungeonId)!
+  const dur = r.win ? r.seconds : r.seconds * 0.68
+  const rewardBase = getBase(dungeon.reward.baseId)
+
+  const stats: Array<[string, string]> = [
+    ['Duração (simulada)', fmtTime(dur)],
+    ['DPS real (medido)', fmtInt(r.dps)],
+    ['Res. a fogo', `${r.fireRes}%`],
+    ['Resultado', r.win ? 'Dungeon concluída' : 'Herói tombou'],
+  ]
+
+  return (
+    <div className="report">
+      <div className={`report__banner ${r.win ? 'win' : 'lose'}`}>
+        {r.win ? 'VITÓRIA' : 'DERROTA — MORTE POR FOGO'}
+      </div>
+      <div className="report__cause">
+        {r.win
+          ? `Concluído em ${fmtTime(dur)} com res. a fogo de ${r.fireRes}%. O DPS real medido foi ${fmtInt(r.dps)}.`
+          : `Você chegou ao chefe, mas recebeu o pico como FOGO com apenas ${r.fireRes}% de resistência (a dungeon exige ${r.fireReq}%). Ainda assim, o DPS real foi medido: ${fmtInt(r.dps)}.`}
+      </div>
+      <div className="report__grid">
+        <div className="report__col">
+          <div className="eyebrow mb6">Resumo</div>
+          {stats.map(([k, v]) => (
+            <div className="stat-big" key={k}>
+              <span className="k">{k}</span>
+              <span className="v">{v}</span>
+            </div>
+          ))}
+        </div>
+        <div className="report__col">
+          <div className="eyebrow mb6">Fatos da tentativa</div>
+          <ul className="facts">
+            {r.win ? (
+              <>
+                <li>DPS real de {fmtInt(r.dps)} conhecido — agora exibido em todas as telas.</li>
+                <li>Res. a fogo {r.fireRes}% (exigido {r.fireReq}%) evitou a morte.</li>
+                <li>Trocar item, craftar ou mexer na árvore volta a esconder o DPS real.</li>
+              </>
+            ) : (
+              <>
+                <li>Dano não foi o problema: o DPS real é {fmtInt(r.dps)}.</li>
+                <li>Morte na fase ígnea — res. a fogo {r.fireRes}% abaixo do exigido {r.fireReq}%.</li>
+                <li>Equipe o "Guarda-Chama" (baú) ou aloque "Cerne Térmico" e tente de novo.</li>
+              </>
+            )}
+          </ul>
+          {r.win ? (
+            <>
+              <div className="eyebrow mt10 mb6">Loot obtido</div>
+              <div className={`loot-row ${rarClass(dungeon.reward.rarity)}`}>
+                <div className={`ic ${rarClass(dungeon.reward.rarity)}`}>{rewardBase.name.charAt(0)}</div>
+                <div className="loot-main">
+                  <div className={`loot-name ${rarClass(dungeon.reward.rarity)}`}>{dungeon.reward.name}</div>
+                  <div className="tiny muted">{rewardBase.name}</div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
+      <div className="report__actions">
+        {!r.win ? (
+          <button className="btn" onClick={() => game.navigate('equipamento')}>
+            Ajustar equipamento
+          </button>
+        ) : null}
+        <button className="btn" onClick={() => game.resetAttempt()}>
+          {r.win ? 'Nova tentativa' : 'Voltar'}
+        </button>
+      </div>
     </div>
   )
 }
