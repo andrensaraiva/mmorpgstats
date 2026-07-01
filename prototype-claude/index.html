@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BuildsWar :: Cliente da Liga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="vignette" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+
+<div class="app">
+  <!-- ===================== TOP BAR ===================== -->
+  <header class="app-top">
+    <div class="brand">
+      <span class="brand__mark">BuildsWar</span>
+      <span class="brand__sub">O Portal dos Estrategistas</span>
+    </div>
+    <div class="app-top__center">
+      <div class="league-chip">
+        <span class="dot dot--on"></span>
+        <span class="league-chip__name">Cinzas do Abismo</span>
+        <span class="league-chip__meta">Trade · Softcore</span>
+        <span class="league-chip__timer" id="seasonTimer">39d 14h</span>
+      </div>
+    </div>
+    <div class="app-top__right">
+      <span class="acct"><span class="acct__hero" id="heroName">Vheyra</span><span class="acct__lvl">Nv 42</span></span>
+      <span class="online">online <b id="onlineCount">2.481</b></span>
+    </div>
+  </header>
+
+  <!-- ===================== NAV ===================== -->
+  <nav class="app-nav" id="mainnav"></nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="app-main" id="content"></main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="app-foot">
+    <span>BuildsWar Online — protótipo não-comercial</span>
+    <span class="sep">·</span>
+    <span>Motor: autoridade do servidor</span>
+    <span class="sep">·</span>
+    <span>&copy; 2026 Mayouma Studio</span>
+    <span class="sep">·</span>
+    <span class="foot-nostalgia">um portal de herói, como nos velhos tempos</span>
+  </footer>
+</div>
+
+<div id="tooltip" class="floattip" hidden></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
