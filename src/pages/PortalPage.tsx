@@ -1,4 +1,5 @@
-import { CHARACTER, META } from '../game/content'
+import { META, classById } from '../game/content'
+import type { CharacterSummary } from '../game/session'
 import type { Game } from '../game/store'
 import { PageHead, Panel, PowerBar } from '../ui/atoms'
 
@@ -23,7 +24,8 @@ const NEWS = [
   },
 ]
 
-export function PortalPage({ game }: { game: Game }) {
+export function PortalPage({ game, hero }: { game: Game; hero?: CharacterSummary | null }) {
+  const cls = hero ? classById[hero.classId] : null
   return (
     <>
       <PageHead title="Portal" crumb={`Notícias da Liga ${META.league}`} />
@@ -60,15 +62,15 @@ export function PortalPage({ game }: { game: Game }) {
           <Panel title="Herói ativo">
             <div className="attr">
               <span className="k">Nome</span>
-              <span className="v">{CHARACTER.name}</span>
+              <span className="v">{hero?.name ?? '—'}</span>
             </div>
             <div className="attr">
               <span className="k">Classe</span>
-              <span className="v">{CHARACTER.className}</span>
+              <span className="v">{cls?.name ?? '—'}</span>
             </div>
             <div className="attr">
               <span className="k">Nível</span>
-              <span className="v">{CHARACTER.level}</span>
+              <span className="v">{hero?.level ?? 1}</span>
             </div>
             <button className="btn btn--full mt8" onClick={() => game.navigate('equipamento')}>
               Abrir equipamento

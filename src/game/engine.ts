@@ -10,6 +10,7 @@
 
 import {
   AFFIX_GROUPS,
+  BESTIARY,
   MAIN_SKILL_ID,
   SKILLS,
   SUPPORTS,
@@ -19,13 +20,18 @@ import {
 import type {
   AffixGroup,
   AffixKind,
+  DamageType,
   Dungeon,
   DungeonOutcome,
+  DungeonReplay,
   EquipSlot,
   ItemBase,
   ItemInstance,
+  MarkerKind,
+  Monster,
   Power,
   Rarity,
+  ReplayMarker,
   RolledAffix,
   StatKey,
   StatMods,
@@ -169,6 +175,7 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
     fireRes: clamp(global.fireRes ?? 0, RES_FLOOR, RES_CAP),
     coldRes: clamp(global.coldRes ?? 0, RES_FLOOR, RES_CAP),
     litRes: clamp(global.litRes ?? 0, RES_FLOOR, RES_CAP),
+    chaosRes: clamp(global.chaosRes ?? 0, RES_FLOOR, RES_CAP),
     strength,
     dexterity: global.dexterity ?? 0,
     intelligence: global.intelligence ?? 0,
@@ -217,10 +224,186 @@ export function estimateRange(dps: number): [number, number] {
 
 const DUNGEON_TIME_K = 12
 
+/** Resistência do jogador para cada tipo de dano (físico não tem res.: usa armadura). */
+const RES_OF_TYPE: Record<Exclude<DamageType, 'phys'>, keyof Power> = {
+  fire: 'fireRes',
+  cold: 'coldRes',
+  lightning: 'litRes',
+  chaos: 'chaosRes',
+}
+
+const TYPE_LABEL: Record<DamageType, string> = {
+  phys: 'físico',
+  fire: 'fogo',
+  cold: 'frio',
+  lightning: 'raio',
+  chaos: 'caos',
+}
+
+/** Resistência mínima exigida por tipo, derivada do nível/diff da dungeon. */
+function requiredResFor(dungeon: Dungeon, type: DamageType): number {
+  // Físico é tratado por armadura (checagem à parte), não por resistência.
+  if (type === 'phys') return 0
+  if (type === 'fire' && dungeon.fireThreat) return dungeon.fireReq
+  // Piso de gênero: quanto maior o nível, mais resistência a dungeon cobra.
+  return clamp(20 + Math.round(dungeon.lvl / 2), 25, 75)
+}
+
 export function dungeonOutcome(dungeon: Dungeon, power: Power): DungeonOutcome {
+  const comp = dungeon.composition
+
+  // Vazão: builds sem AoE penam contra enxame; sem single-target, contra poucos-fortes.
+  // (Aproximação até o motor por ondas — mantém determinístico e legível.)
   const seconds = clamp((dungeon.diff / Math.max(1, power.dps)) * DUNGEON_TIME_K, 45, 900)
-  const survivable = !dungeon.fireThreat || power.fireRes >= dungeon.fireReq
-  return { seconds: Math.round(seconds), survivable }
+
+  // --- Caminho legado (sem composição declarada): só a ameaça de fogo. ---
+  if (!comp) {
+    const survivable = !dungeon.fireThreat || power.fireRes >= dungeon.fireReq
+    return {
+      seconds: Math.round(seconds),
+      survivable,
+      reason: survivable ? 'none' : 'damage-type',
+      breakingType: survivable ? undefined : 'fire',
+      cause: survivable
+        ? `Concluída sem lacuna de defesa aparente.`
+        : `Res. a fogo ${power.fireRes}% abaixo do exigido ${dungeon.fireReq}%: a fase ígnea mata.`,
+    }
+  }
+
+  // --- Camada por tipo de dano: falha na resistência mais deficitária. ---
+  let worst: { type: DamageType; deficit: number; have: number; need: number } | null = null
+  for (const type of comp.damageMix) {
+    if (type === 'phys') continue // físico é atrito de armadura, não gate de resistência
+    const have = power[RES_OF_TYPE[type as Exclude<DamageType, 'phys'>]] as number
+    const need = requiredResFor(dungeon, type)
+    const deficit = need - have
+    if (deficit > 0 && (!worst || deficit > worst.deficit)) {
+      worst = { type, deficit, have, need }
+    }
+  }
+
+  if (worst) {
+    return {
+      seconds: Math.round(seconds),
+      survivable: false,
+      reason: 'damage-type',
+      breakingType: worst.type,
+      cause:
+        `A camada de ${TYPE_LABEL[worst.type]} quebrou: res. a ${TYPE_LABEL[worst.type]} ${worst.have}% ` +
+        `abaixo do exigido ~${worst.need}%. +${worst.deficit}% de res. a ${TYPE_LABEL[worst.type]} resolve.`,
+    }
+  }
+
+  // --- Composição: voadores sem dano-no-ar → stall (não limpa, morre de atrito). ---
+  // Sem tags de skill ainda; heurística: DPS baixo + aéreo = alto risco de stall.
+  if (comp.hasAerial && power.dps < dungeon.diff / 20) {
+    return {
+      seconds: Math.round(seconds),
+      survivable: false,
+      reason: 'stall',
+      cause:
+        `Inimigos voadores não foram derrubados a tempo (DPS efetivo aéreo baixo): ` +
+        `a tentativa estagnou e o atrito venceu. Uma skill que atinge o ar limpa a horda aérea.`,
+    }
+  }
+
+  // --- Mobilidade alta exigida × DPS insuficiente → atrito de dano inevitável. ---
+  if (comp.mobilityDemand === 'high' && power.dps < dungeon.diff / 12) {
+    return {
+      seconds: Math.round(seconds),
+      survivable: false,
+      reason: 'attrition',
+      cause:
+        `Sem fechar distância dos atiradores, o dano inevitável acumulou. ` +
+        `Mais mobilidade OU mais DPS para encurtar a exposição resolve.`,
+    }
+  }
+
+  return {
+    seconds: Math.round(seconds),
+    survivable: true,
+    reason: 'none',
+    cause: `Todas as camadas de defesa (${comp.damageMix.map((t) => TYPE_LABEL[t]).join(', ')}) seguraram.`,
+  }
+}
+
+/* ===================== REPLAY / MINIMAPA ===================== */
+
+const monsterById = Object.fromEntries(BESTIARY.map((m) => [m.id, m])) as Record<string, Monster>
+
+/** Ordena as ondas por rank para o herói avançar do trivial ao chefe. */
+const RANK_ORDER: Record<Monster['rank'], number> = { normal: 0, elite: 1, boss: 2 }
+
+/**
+ * Gera um replay leve e determinístico da tentativa: uma rota de marcadores
+ * (player → packs → elites → boss) com drops de loot notável após limpar
+ * packs. Em derrota, a rota termina no marcador onde a ameaça venceu.
+ *
+ * Puro: a mesma seed produz o mesmo replay (casa com "números descobertos").
+ */
+export function dungeonReplay(dungeon: Dungeon, outcome: DungeonOutcome, seed: number): DungeonReplay {
+  const rng = makeRng(seed >>> 0)
+  const comp = dungeon.composition
+
+  // Estações do encontro, do mais fraco ao chefe. Sem composição, um encontro genérico.
+  const stations: Array<{ kind: MarkerKind; label: string; drops: boolean }> = []
+  if (comp) {
+    const waves = comp.waves
+      .map((w) => ({ w, mon: monsterById[w.monsterId] }))
+      .filter((x): x is { w: typeof x.w; mon: Monster } => Boolean(x.mon))
+      .sort((a, b) => RANK_ORDER[a.mon.rank] - RANK_ORDER[b.mon.rank])
+    for (const { w, mon } of waves) {
+      const kind: MarkerKind = mon.rank === 'boss' ? 'boss' : mon.rank === 'elite' ? 'elite' : 'enemy'
+      const label = w.count > 1 ? `${mon.name} ×${w.count}` : mon.name
+      // Elites e chefes deixam loot notável; packs comuns, às vezes.
+      stations.push({ kind, label, drops: mon.rank !== 'normal' })
+    }
+  } else {
+    stations.push({ kind: 'enemy', label: 'Horda', drops: false })
+    stations.push({ kind: 'boss', label: dungeon.name, drops: true })
+  }
+
+  const markers: ReplayMarker[] = []
+  const path: Array<{ x: number; y: number }> = []
+
+  // Origem do herói (esquerda-baixo), rota serpenteando até a direita.
+  const start = { x: 8, y: 78 }
+  path.push(start)
+  markers.push({ id: 'player', kind: 'player', x: start.x, y: start.y, at: 0, label: 'Herói' })
+
+  const n = stations.length
+  let markerSeq = 0
+  stations.forEach((st, i) => {
+    // Fração do avanço em que esta estação é alcançada.
+    const at = (i + 1) / (n + 1)
+    // x cresce monotônico; y serpenteia para dar vida ao traçado.
+    const x = 14 + at * 74 + (rng() - 0.5) * 4
+    const y = 30 + Math.sin((i + 1) * 1.3) * 26 + (rng() - 0.5) * 8
+    const cx = clamp(x, 6, 94)
+    const cy = clamp(y, 10, 86)
+    path.push({ x: cx, y: cy })
+    markers.push({ id: `mk_${markerSeq++}`, kind: st.kind, x: cx, y: cy, at, label: st.label })
+
+    // Loot notável cai um pouco depois de limpar a estação, ao lado dela.
+    const dropsRare = st.drops || (comp && rng() < 0.35)
+    if (dropsRare) {
+      const isFinal = i === n - 1
+      markers.push({
+        id: `mk_${markerSeq++}`,
+        kind: 'loot',
+        x: clamp(cx + 5, 6, 96),
+        y: clamp(cy - 8, 6, 90),
+        at: Math.min(0.999, at + 0.03),
+        label: isFinal ? dungeon.reward.name : 'Loot raro',
+        rarity: isFinal ? dungeon.reward.rarity : 'rare',
+      })
+    }
+  })
+
+  // Em derrota, a rota morre onde a ameaça venceu: um pouco antes do fim.
+  const endsAt = outcome.survivable ? 1 : clamp(0.55 + rng() * 0.25, 0.4, 0.9)
+
+  return { markers, path, endsAt, win: outcome.survivable }
 }
 
 /* ===================== CRAFTING ===================== */

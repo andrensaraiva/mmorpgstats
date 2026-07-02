@@ -12,6 +12,7 @@ import {
   connectedToStart,
   craft,
   dungeonOutcome,
+  dungeonReplay,
   fingerprint,
   makeRng,
   resolveItemMods,
@@ -80,6 +81,99 @@ describe('dungeonOutcome', () => {
     const strong = dungeonOutcome(igneous, { ...basePower(), fireRes: igneous.fireReq })
     expect(weak.survivable).toBe(false)
     expect(strong.survivable).toBe(true)
+  })
+})
+
+describe('dungeonOutcome — composição / bestiário', () => {
+  const glacier = DUNGEONS.find((d) => d.id === 'd-glacier')!
+
+  it('acusa a camada de dano que quebrou (não só fogo)', () => {
+    // Glacial aplica frio+raio; falha na res. de frio deficitária.
+    const outcome = dungeonOutcome(glacier, { ...basePower(), coldRes: 0, litRes: 70, dps: 5000 })
+    expect(outcome.survivable).toBe(false)
+    expect(outcome.reason).toBe('damage-type')
+    expect(outcome.breakingType).toBe('cold')
+    expect(outcome.cause).toContain('frio')
+  })
+
+  it('escolhe o maior déficit entre múltiplos tipos', () => {
+    // Raio mais deficitário que frio → causa deve ser raio.
+    const outcome = dungeonOutcome(glacier, { ...basePower(), coldRes: 40, litRes: 0, dps: 5000 })
+    expect(outcome.breakingType).toBe('lightning')
+  })
+
+  it('com todas as resistências cobertas e DPS alto, sobrevive', () => {
+    const outcome = dungeonOutcome(glacier, {
+      ...basePower(), coldRes: 75, litRes: 75, dps: 8000,
+    })
+    expect(outcome.survivable).toBe(true)
+    expect(outcome.reason).toBe('none')
+  })
+
+  it('voadores + DPS baixo causam stall (não limpa)', () => {
+    const outcome = dungeonOutcome(glacier, {
+      ...basePower(), coldRes: 75, litRes: 75, dps: 50,
+    })
+    expect(outcome.survivable).toBe(false)
+    expect(outcome.reason).toBe('stall')
+    expect(outcome.cause).toContain('ar')
+  })
+
+  it('dungeon legada (sem composição) mantém o gate de fogo', () => {
+    const legacy = { ...glacier, composition: undefined, fireThreat: true, fireReq: 50 }
+    const weak = dungeonOutcome(legacy, { ...basePower(), fireRes: 0 })
+    const ok = dungeonOutcome(legacy, { ...basePower(), fireRes: 60 })
+    expect(weak.reason).toBe('damage-type')
+    expect(weak.breakingType).toBe('fire')
+    expect(ok.survivable).toBe(true)
+  })
+})
+
+describe('dungeonReplay (minimapa)', () => {
+  const crypt = DUNGEONS.find((d) => d.id === 'd-crypt')!
+
+  it('é determinístico: mesma seed → mesmo replay', () => {
+    const outcome = dungeonOutcome(crypt, basePower())
+    const a = dungeonReplay(crypt, outcome, 42)
+    const b = dungeonReplay(crypt, outcome, 42)
+    expect(a).toEqual(b)
+  })
+
+  it('inclui o herói na origem e marcadores dentro do mapa (0–100)', () => {
+    const outcome = dungeonOutcome(crypt, basePower())
+    const replay = dungeonReplay(crypt, outcome, 7)
+    const player = replay.markers.find((m) => m.kind === 'player')
+    expect(player).toBeTruthy()
+    expect(player!.at).toBe(0)
+    for (const m of replay.markers) {
+      expect(m.x).toBeGreaterThanOrEqual(0)
+      expect(m.x).toBeLessThanOrEqual(100)
+      expect(m.y).toBeGreaterThanOrEqual(0)
+      expect(m.y).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('gera marcador de chefe e de loot a partir da composição', () => {
+    const outcome = dungeonOutcome(crypt, basePower())
+    const replay = dungeonReplay(crypt, outcome, 3)
+    expect(replay.markers.some((m) => m.kind === 'boss')).toBe(true)
+    expect(replay.markers.some((m) => m.kind === 'loot')).toBe(true)
+  })
+
+  it('vitória percorre até o fim; derrota termina antes', () => {
+    const win = dungeonReplay(crypt, { ...dungeonOutcome(crypt, basePower()), survivable: true }, 5)
+    const lose = dungeonReplay(crypt, { ...dungeonOutcome(crypt, basePower()), survivable: false }, 5)
+    expect(win.endsAt).toBe(1)
+    expect(win.win).toBe(true)
+    expect(lose.endsAt).toBeLessThan(1)
+    expect(lose.win).toBe(false)
+  })
+
+  it('funciona para dungeon sem composição (encontro genérico)', () => {
+    const legacy = { ...crypt, composition: undefined }
+    const replay = dungeonReplay(legacy, dungeonOutcome(legacy, basePower()), 9)
+    expect(replay.markers.some((m) => m.kind === 'boss')).toBe(true)
+    expect(replay.path.length).toBeGreaterThan(1)
   })
 })
 
@@ -165,7 +259,7 @@ describe('connectedToStart', () => {
 function basePower() {
   return {
     dps: 300, ehp: 8000, life: 6000, armour: 500, block: 20, attackSpeed: 1.4,
-    critChance: 20, critMulti: 180, fireRes: 40, coldRes: 40, litRes: 40,
+    critChance: 20, critMulti: 180, fireRes: 40, coldRes: 40, litRes: 40, chaosRes: 40,
     strength: 200, dexterity: 40, intelligence: 40, supportCap: 2,
   }
 }

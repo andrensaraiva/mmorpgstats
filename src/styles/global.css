@@ -1344,6 +1344,68 @@ a {
   margin: 0 4px 4px 0;
   background: rgba(90, 40, 20, 0.2);
 }
+/* ---- preview de composição / bestiário ---- */
+.dcomp {
+  margin: 6px 0 8px;
+  padding: 8px;
+  border: 1px dotted var(--line);
+  border-radius: 3px;
+  background: rgba(10, 14, 20, 0.5);
+}
+.dcomp__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.dcomp__row:last-child {
+  margin-bottom: 0;
+}
+.dcomp__k {
+  font-family: 'Cinzel';
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-mut);
+  margin-right: 2px;
+}
+.dchip {
+  font-size: 10px;
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 2px;
+  padding: 1px 6px;
+  background: rgba(40, 48, 60, 0.4);
+}
+.dchip--warn {
+  color: #ffd27a;
+  border-color: #6a3a1a;
+  background: rgba(120, 60, 20, 0.25);
+}
+.dtype {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+}
+.dtype--phys { color: #d8d2c4; border-color: #6b6455; background: rgba(120, 112, 96, 0.2); }
+.dtype--fire { color: #ff9a5a; border-color: #7a3418; background: rgba(150, 60, 24, 0.22); }
+.dtype--cold { color: #8fd0ff; border-color: #245a78; background: rgba(30, 90, 130, 0.22); }
+.dtype--lightning { color: #f2e06a; border-color: #7a6a20; background: rgba(140, 120, 30, 0.2); }
+.dtype--chaos { color: #cf8cff; border-color: #5a2a7a; background: rgba(100, 40, 140, 0.22); }
+.dmob {
+  font-size: 10px;
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 2px;
+  padding: 1px 6px;
+  background: rgba(30, 36, 46, 0.5);
+}
+.dmob--elite { color: #ffcf6a; border-color: #7a5a1a; }
+.dmob--boss { color: #ff7a7a; border-color: #7a2020; font-weight: 700; }
+
 .dcard .ddesc {
   font-size: 13px;
   color: var(--text);
@@ -1430,6 +1492,86 @@ a {
   letter-spacing: 1px;
   color: var(--gold-hi);
 }
+
+/* ---- minimapa: replay leve da tentativa ---- */
+.minimap {
+  margin: 10px 0;
+}
+.minimap__svg {
+  width: 100%;
+  height: 160px;
+  display: block;
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  background:
+    radial-gradient(120% 90% at 20% 90%, rgba(30, 40, 52, 0.55), rgba(6, 9, 13, 0.9)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 12px);
+}
+.minimap__trail {
+  fill: none;
+  stroke: rgba(200, 160, 70, 0.35);
+  stroke-width: 0.6;
+  stroke-dasharray: 2 2;
+  vector-effect: non-scaling-stroke;
+}
+/* glifos como "texto" escalado pelo viewBox → font-size em unidades do mapa */
+.minimap__svg .mk {
+  font-size: 6px;
+  opacity: 0.22;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+  fill: var(--text-mut);
+}
+.minimap__svg .mk.is-on {
+  opacity: 1;
+}
+.minimap__svg .mk--enemy {
+  fill: #c96a5a;
+  font-size: 5px;
+}
+.minimap__svg .mk--elite {
+  fill: #ffcf6a;
+  font-size: 7px;
+}
+.minimap__svg .mk--boss {
+  fill: #ff6a6a;
+  font-size: 9px;
+}
+.minimap__svg .mk--loot {
+  fill: #6fb3ff;
+  font-size: 6px;
+}
+.minimap__svg .mk--loot.rar-rare {
+  fill: #f2e06a;
+}
+.minimap__svg .mk--loot.rar-unique {
+  fill: #d8804a;
+}
+.minimap__svg .mk--loot.is-on {
+  filter: drop-shadow(0 0 1.4px currentColor);
+}
+.minimap__svg .mk--player {
+  fill: var(--teal-hi);
+  font-size: 7px;
+  opacity: 1;
+  filter: drop-shadow(0 0 1.2px rgba(90, 210, 200, 0.8));
+}
+.minimap__svg .mk--player.is-dead {
+  fill: #ff5a5a;
+  filter: drop-shadow(0 0 1.6px rgba(220, 60, 60, 0.9));
+}
+.minimap__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.minimap__legend .mk--player { color: var(--teal-hi); }
+.minimap__legend .mk--enemy { color: #c96a5a; }
+.minimap__legend .mk--elite { color: #ffcf6a; }
+.minimap__legend .mk--boss { color: #ff6a6a; }
+.minimap__legend .mk--loot { color: #f2e06a; }
 
 .report {
   border: 1px solid var(--line2);
@@ -1665,6 +1807,589 @@ a {
   }
   .orb-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* =========================================================
+   PORTA DE ENTRADA — auth / seleção / criação de personagem
+   ========================================================= */
+
+.btn--ghost {
+  border-color: var(--line2);
+  background: rgba(30, 36, 46, 0.5);
+  color: var(--text-dim);
+}
+.btn--ghost:hover {
+  color: var(--text);
+  border-color: var(--gold-lo);
+  background: rgba(40, 48, 60, 0.6);
+}
+
+.gate {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px;
+}
+.gate__bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(1000px 600px at 50% -10%, rgba(160, 120, 50, 0.12), transparent 60%),
+    radial-gradient(900px 700px at 10% 110%, rgba(70, 30, 30, 0.3), transparent 60%),
+    radial-gradient(900px 700px at 100% 100%, rgba(30, 60, 80, 0.16), transparent 60%),
+    linear-gradient(180deg, #090b0f, #06080b);
+}
+.gate--wide {
+  align-items: flex-start;
+  padding-top: 36px;
+}
+
+/* ---- painel de login ---- */
+.gate__panel {
+  width: 100%;
+  max-width: 400px;
+  padding: 28px 26px 22px;
+  border: 1px solid var(--line2);
+  border-top: 2px solid var(--gold-lo);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.96), rgba(11, 14, 19, 0.97));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.gate__brand {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.gate__brand .brand__mark {
+  font-size: 40px;
+}
+.gate__brand .brand__sub {
+  display: block;
+  font-family: 'Cinzel';
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-mut);
+  margin-top: 2px;
+}
+.gate__brand--row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  margin-bottom: 0;
+}
+
+/* segmented (entrar / criar) */
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #0a0d11;
+}
+.seg__btn {
+  font-family: 'Cinzel';
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.seg__btn:hover {
+  color: var(--text);
+}
+.seg__btn.is-active {
+  color: #fdf1cf;
+  background: linear-gradient(180deg, #2b2416, #171009);
+  box-shadow: inset 0 1px 0 rgba(240, 200, 110, 0.2);
+}
+
+/* campos de formulário */
+.gate__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.field__label {
+  font-family: 'Cinzel';
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-mut);
+}
+.field__input {
+  width: 100%;
+  padding: 11px 12px;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 15px;
+  color: var(--text);
+  background: #05070a;
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.field__input::placeholder {
+  color: var(--text-mut);
+}
+.field__input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(200, 160, 70, 0.18);
+}
+.field__input.has-error {
+  border-color: var(--blood-hi);
+  box-shadow: 0 0 0 2px rgba(200, 60, 50, 0.16);
+}
+.field__pw {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.field__pw .field__input {
+  padding-right: 74px;
+}
+.field__toggle {
+  position: absolute;
+  right: 6px;
+  font-family: 'Cinzel';
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+.field__toggle:hover {
+  color: var(--gold-hi);
+}
+.field__err {
+  font-size: 12px;
+  color: var(--blood-hi);
+}
+.field__link {
+  align-self: flex-end;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.field__link:hover {
+  color: var(--gold-hi);
+}
+
+.gate__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  color: var(--text-mut);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.gate__or::before,
+.gate__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.gate__note {
+  margin-top: 16px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* ---- seleção de herói (roster) ---- */
+.roster {
+  width: 100%;
+  max-width: 960px;
+}
+.roster__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.roster__acct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.roster__title,
+.create__title {
+  font-family: 'Cinzel';
+  font-weight: 700;
+  color: var(--gold-hi);
+  font-size: 22px;
+  margin: 0 0 16px;
+}
+.roster__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.roster__foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.charslot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 14px 16px;
+  min-height: 230px;
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(20, 25, 32, 0.9), rgba(10, 13, 18, 0.92));
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.08s, box-shadow 0.12s;
+  color: inherit;
+  text-align: center;
+}
+.charslot:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold-lo);
+}
+.charslot.is-active {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold-lo), 0 0 22px rgba(200, 160, 70, 0.2);
+}
+.charslot__portrait {
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-bottom: 6px;
+  border: 2px solid var(--line2);
+  background: radial-gradient(circle at 50% 35%, rgba(60, 70, 84, 0.5), rgba(8, 11, 15, 0.9));
+}
+.charslot__glyph {
+  font-size: 40px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+}
+.charslot__name {
+  font-family: 'Cinzel';
+  font-weight: 700;
+  color: var(--gold-hi);
+  font-size: 16px;
+}
+.charslot__cls {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.charslot__lvl {
+  font-family: 'Cinzel';
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-mut);
+  text-transform: uppercase;
+}
+.charslot__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+/* acento por classe */
+.charslot--blood .charslot__portrait { border-color: #7a2620; }
+.charslot--blood .charslot__glyph { color: var(--blood-hi); }
+.charslot--teal .charslot__portrait { border-color: #2c6a60; }
+.charslot--teal .charslot__glyph { color: var(--teal-hi); }
+.charslot--spectral .charslot__portrait { border-color: #35597e; }
+.charslot--spectral .charslot__glyph { color: var(--spectral-hi); }
+
+.charslot--empty {
+  border-style: dashed;
+  justify-content: center;
+  color: var(--text-mut);
+}
+.charslot--empty:hover {
+  color: var(--gold-hi);
+  border-color: var(--gold-lo);
+}
+.charslot__plus {
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 300;
+}
+.charslot__emptylabel {
+  font-family: 'Cinzel';
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* ---- criação de personagem ---- */
+.create {
+  width: 100%;
+  max-width: 960px;
+}
+.create__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.create__head .create__title {
+  margin: 0;
+  flex: 1;
+}
+.create__body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.create__classes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.classcard {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(20, 25, 32, 0.9), rgba(10, 13, 18, 0.92));
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, transform 0.08s;
+}
+.classcard:hover {
+  transform: translateX(2px);
+  border-color: var(--gold-lo);
+}
+.classcard.is-active {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold-lo);
+}
+.classcard__glyph {
+  grid-row: 1 / 3;
+  font-size: 30px;
+  text-align: center;
+}
+.classcard__name {
+  font-family: 'Cinzel';
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--gold-hi);
+}
+.classcard__attr {
+  font-size: 11px;
+  color: var(--text-mut);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.classcard--blood.is-active { border-color: #a83028; }
+.classcard--blood .classcard__glyph { color: var(--blood-hi); }
+.classcard--teal.is-active { border-color: #3f9e8f; }
+.classcard--teal .classcard__glyph { color: var(--teal-hi); }
+.classcard--spectral.is-active { border-color: #5a8fc4; }
+.classcard--spectral .classcard__glyph { color: var(--spectral-hi); }
+
+.create__detail {
+  padding: 22px 24px;
+  border: 1px solid var(--line2);
+  border-top: 2px solid var(--gold-lo);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.94), rgba(11, 14, 19, 0.95));
+}
+.detail--blood { border-top-color: #8a2018; }
+.detail--teal { border-top-color: #2c6a60; }
+.detail--spectral { border-top-color: #35597e; }
+.detail__glyph {
+  font-size: 48px;
+  line-height: 1;
+}
+.detail--blood .detail__glyph { color: var(--blood-hi); }
+.detail--teal .detail__glyph { color: var(--teal-hi); }
+.detail--spectral .detail__glyph { color: var(--spectral-hi); }
+.detail__name {
+  font-family: 'Cinzel';
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--gold-hi);
+  margin-top: 6px;
+}
+.detail__tag {
+  font-style: italic;
+  color: var(--parch);
+  margin: 2px 0 10px;
+}
+.detail__fantasy {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+.detail__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px dotted var(--line);
+  font-size: 14px;
+}
+.detail__k {
+  font-family: 'Cinzel';
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-mut);
+}
+.detail__v {
+  color: var(--text);
+}
+.detail__block {
+  margin-top: 12px;
+}
+.detail__block .detail__k {
+  display: block;
+  margin-bottom: 6px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  font-size: 12px;
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 2px;
+  padding: 2px 8px;
+  background: rgba(40, 48, 60, 0.4);
+}
+.chip--gold {
+  color: var(--gold-hi);
+  border-color: var(--gold-lo);
+  background: rgba(90, 70, 25, 0.2);
+}
+
+/* ---- botão de conta no topbar (troca de herói) ---- */
+.acct--btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  padding: 4px 10px;
+  background: rgba(20, 25, 32, 0.6);
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+.acct--btn:hover {
+  border-color: var(--gold-lo);
+}
+.acct__glyph {
+  font-size: 20px;
+  color: var(--gold-hi);
+}
+.acct__col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+
+/* ---- modal (confirmação) ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 16px;
+}
+.modal__box {
+  width: 100%;
+  max-width: 380px;
+  padding: 22px 24px;
+  border: 1px solid var(--line2);
+  border-top: 2px solid var(--blood);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(24, 20, 22, 0.98), rgba(12, 10, 12, 0.98));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+.modal__title {
+  font-family: 'Cinzel';
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--blood-hi);
+  margin-bottom: 8px;
+}
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* glifo de classe sobreposto ao retrato da ficha */
+.portrait__glyph {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 68px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.85));
+  opacity: 0.92;
+}
+.portrait--blood .portrait__glyph { color: var(--blood-hi); }
+.portrait--teal .portrait__glyph { color: var(--teal-hi); }
+.portrait--spectral .portrait__glyph { color: var(--spectral-hi); }
+
+@media (max-width: 760px) {
+  .roster__grid {
+    grid-template-columns: 1fr;
+  }
+  .create__body {
+    grid-template-columns: 1fr;
+  }
+  .create__classes {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .classcard {
+    flex: 1 1 45%;
   }
 }
 

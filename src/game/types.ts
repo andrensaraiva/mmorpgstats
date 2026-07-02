@@ -68,6 +68,7 @@ export type StatKey =
   | 'fireRes'
   | 'coldRes'
   | 'litRes'
+  | 'chaosRes'
   | 'strength'
   | 'dexterity'
   | 'intelligence'
@@ -222,7 +223,87 @@ export interface PassiveTree {
   edges: Array<[string, string]>
 }
 
+/* ---------- tipos de dano ---------- */
+
+/**
+ * Os cinco tipos do gênero (PoE2/LE). `phys` é parado por armadura;
+ * fire/cold/lightning por resistências; `chaos` fura o escudo de energia.
+ * Ver docs/BESTIARY_AND_DUNGEONS.md §2.
+ */
+export type DamageType = 'phys' | 'fire' | 'cold' | 'lightning' | 'chaos'
+
+export type DamageProfile = Partial<Record<DamageType, number>>
+
+/* ---------- bestiário ---------- */
+
+/** Papel do inimigo no encontro (arquétipos, à la Diablo 4). */
+export type MonsterRole = 'swarmer' | 'bruiser' | 'ranged' | 'caster' | 'support' | 'aerial'
+
+/** Categoria de poder do inimigo. */
+export type MonsterRank = 'normal' | 'elite' | 'boss'
+
+/** Tamanho do golpe — interage com a armadura (grande fura, pequeno é mitigado). */
+export type HitSize = 'small' | 'medium' | 'huge'
+
+/** Afixo de elite (à la Diablo 4): muda o contrajogo, pode somar um tipo de dano. */
+export interface MonsterAffix {
+  id: string
+  name: string
+  effect: string
+  addsDamageType?: DamageType
+}
+
+/** Fase de chefe: seu próprio perfil de dano e um ponteiro de leitura. */
+export interface BossPhase {
+  damage: DamageProfile
+  note: string
+}
+
+export interface Monster {
+  id: string
+  name: string
+  role: MonsterRole
+  rank: MonsterRank
+  /** Perfil de dano do inimigo → define quais defesas o herói precisa. */
+  damage: DamageProfile
+  hitSize: HitSize
+  life: number
+  /** Tipos contra os quais este inimigo é vulnerável / resistente. */
+  weakTo?: DamageType[]
+  resistant?: DamageType[]
+  /** Presente quando rank === 'elite'. */
+  affixes?: MonsterAffix[]
+  /** Presente quando rank === 'boss'. */
+  phases?: BossPhase[]
+  /** Voa: imune a dano de chão; exige dano que atinge o ar. */
+  aerial?: boolean
+}
+
 /* ---------- dungeons ---------- */
+
+/** Densidade de pacotes (esparso → enxame). */
+export type Density = 'sparse' | 'medium' | 'swarm'
+
+/** Perfil de força do encontro. */
+export type ForceProfile = 'weak-horde' | 'mixed' | 'few-strong'
+
+/** Quanto o encontro exige mobilidade (kite, dash, fechar distância). */
+export type MobilityDemand = 'low' | 'medium' | 'high'
+
+/** A "receita" do encontro — o preview que o jogador vê antes de enviar o herói. */
+export interface DungeonComposition {
+  density: Density
+  forceProfile: ForceProfile
+  /** Tipos de dano presentes → quais resistências/defesas são obrigatórias. */
+  damageMix: DamageType[]
+  /** Há inimigos voadores? Derruba builds de chão. */
+  hasAerial: boolean
+  mobilityDemand: MobilityDemand
+  /** Arquétipos presentes no encontro. */
+  roles: MonsterRole[]
+  /** Ondas para preview: qual monstro e quantos. */
+  waves: Array<{ monsterId: string; count: number }>
+}
 
 export interface Dungeon {
   id: string
@@ -237,6 +318,8 @@ export interface Dungeon {
   season?: boolean
   mods: string[]
   desc: string
+  /** Composição/bestiário do encontro (preview + balanceamento por ameaça). */
+  composition?: DungeonComposition
   /** Item que pode cair na vitória. */
   reward: { baseId: string; rarity: Rarity; name: string }
 }
@@ -268,6 +351,7 @@ export interface Power {
   fireRes: number
   coldRes: number
   litRes: number
+  chaosRes: number
   strength: number
   dexterity: number
   intelligence: number
@@ -280,7 +364,64 @@ export interface Measured {
   dps: number
 }
 
+/** Por que a tentativa terminou como terminou — "o que aconteceu e por quê". */
+export type FailReason =
+  | 'none'
+  | 'damage-type' // uma camada quebrou contra um tipo de dano
+  | 'attrition' // não morreu de golpe, mas o tempo/dano acumulado venceu
+  | 'stall' // não conseguiu limpar (ex.: voadores sem dano-no-ar)
+
 export interface DungeonOutcome {
   seconds: number
   survivable: boolean
+  /** Causa da falha (para o relatório causal — ver docs/BESTIARY_AND_DUNGEONS.md §6). */
+  reason: FailReason
+  /** Tipo de dano que quebrou a defesa, quando reason === 'damage-type'. */
+  breakingType?: DamageType
+  /** Frase pronta explicando a causa e um delta acionável. */
+  cause: string
+}
+
+/* ---------- replay / minimapa da tentativa ---------- */
+
+/** O que um marcador do minimapa representa. */
+export type MarkerKind =
+  | 'player'
+  | 'enemy' // pack de inimigos comuns
+  | 'elite'
+  | 'boss'
+  | 'loot' // drop notável (raro/único)
+
+/**
+ * Marcador estático no minimapa: uma posição (0–100 em x/y) e o momento
+ * (0–1 do progresso) em que passa a ser "alcançado/ativo" na animação.
+ */
+export interface ReplayMarker {
+  id: string
+  kind: MarkerKind
+  x: number
+  y: number
+  /** Progresso (0–1) em que o marcador é revelado/resolvido. */
+  at: number
+  /** Rótulo curto para tooltip (nome do monstro/loot). */
+  label: string
+  /** Só para loot: raridade, para colorir. */
+  rarity?: Rarity
+}
+
+/**
+ * Replay leve e determinístico de uma tentativa: a rota do herói pelos
+ * marcadores. A UI interpola a posição do herói ao longo de `path` conforme
+ * o progresso, "acendendo" os marcadores cujo `at` já passou.
+ * Ver docs/DUNGEON_REPLAY.md.
+ */
+export interface DungeonReplay {
+  /** Todos os marcadores (inclui o player como origem). */
+  markers: ReplayMarker[]
+  /** Sequência de pontos {x,y} que o herói percorre (a "rota"). */
+  path: Array<{ x: number; y: number }>
+  /** Progresso (0–1) em que a tentativa termina (morte antecipada < 1). */
+  endsAt: number
+  /** Vitória? (espelha o outcome; morte para a rota antes do fim.) */
+  win: boolean
 }

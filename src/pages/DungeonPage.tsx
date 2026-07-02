@@ -1,14 +1,56 @@
-import { useEffect, useRef, useState } from 'react'
-import { DUNGEONS, getBase } from '../game/content'
-import { dungeonOutcome } from '../game/engine'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BESTIARY, DUNGEONS, getBase } from '../game/content'
+import { dungeonOutcome, dungeonReplay } from '../game/engine'
 import type { AttemptResult, Game } from '../game/store'
+import type {
+  DamageType,
+  Density,
+  DungeonReplay,
+  ForceProfile,
+  MarkerKind,
+  MobilityDemand,
+  MonsterRole,
+} from '../game/types'
 import { fmtInt, fmtTime, rarClass } from '../ui/format'
 import { PageHead, Panel, PowerBar } from '../ui/atoms'
+
+const TYPE_LABEL: Record<DamageType, string> = {
+  phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
+}
+const DENSITY_LABEL: Record<Density, string> = {
+  sparse: 'Esparso', medium: 'Densidade média', swarm: 'Enxame',
+}
+const FORCE_LABEL: Record<ForceProfile, string> = {
+  'weak-horde': 'Horda fraca', mixed: 'Misto', 'few-strong': 'Poucos, porém fortes',
+}
+const MOBILITY_LABEL: Record<MobilityDemand, string> = {
+  low: 'Mobilidade: baixa', medium: 'Mobilidade: média', high: 'Mobilidade: alta',
+}
+const ROLE_LABEL: Record<MonsterRole, string> = {
+  swarmer: 'Enxame', bruiser: 'Brutamontes', ranged: 'Atirador',
+  caster: 'Conjurador', support: 'Suporte', aerial: 'Aéreo',
+}
+const monsterById = Object.fromEntries(BESTIARY.map((m) => [m.id, m]))
+
+/** Seed estável do replay: dungeon + fingerprint da build (mesma build → mesmo replay). */
+function replaySeed(dungeonId: string, fingerprint: string): number {
+  let h = 2166136261
+  const s = `${dungeonId}#${fingerprint}`
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
 
 export function DungeonPage({ game }: { game: Game }) {
   const { state, power } = game
   const dungeon = DUNGEONS.find((d) => d.id === state.selectedDungeon)!
   const outcome = dungeonOutcome(dungeon, power)
+  const replay = useMemo(
+    () => dungeonReplay(dungeon, outcome, replaySeed(dungeon.id, game.currentFingerprint)),
+    [dungeon, outcome, game.currentFingerprint],
+  )
 
   const [progress, setProgress] = useState(0)
   const timer = useRef<number | undefined>(undefined)
@@ -34,6 +76,9 @@ export function DungeonPage({ game }: { game: Game }) {
           seconds: outcome.seconds,
           fireRes: power.fireRes,
           fireReq: dungeon.fireReq,
+          cause: outcome.cause,
+          reason: outcome.reason,
+          breakingType: outcome.breakingType,
         }
         // Rodar a dungeon "descobre" o DPS real do fingerprint atual.
         game.dispatch({
@@ -80,6 +125,38 @@ export function DungeonPage({ game }: { game: Game }) {
                     </span>
                   ))}
                 </div>
+                {d.composition ? (
+                  <div className="dcomp">
+                    <div className="dcomp__row">
+                      <span className="dchip">{DENSITY_LABEL[d.composition.density]}</span>
+                      <span className="dchip">{FORCE_LABEL[d.composition.forceProfile]}</span>
+                      <span className="dchip">{MOBILITY_LABEL[d.composition.mobilityDemand]}</span>
+                      {d.composition.hasAerial ? <span className="dchip dchip--warn">Voadores</span> : null}
+                    </div>
+                    <div className="dcomp__row">
+                      <span className="dcomp__k">Dano:</span>
+                      {d.composition.damageMix.map((t) => (
+                        <span className={`dtype dtype--${t}`} key={t}>{TYPE_LABEL[t]}</span>
+                      ))}
+                    </div>
+                    <div className="dcomp__row">
+                      <span className="dcomp__k">Bestiário:</span>
+                      {d.composition.waves.map((w) => {
+                        const mon = monsterById[w.monsterId]
+                        if (!mon) return null
+                        return (
+                          <span
+                            className={`dmob dmob--${mon.rank}`}
+                            key={w.monsterId}
+                            title={`${ROLE_LABEL[mon.role]}${mon.aerial ? ' · aéreo' : ''}`}
+                          >
+                            {mon.name} ×{w.count}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="ddesc">{d.desc}</div>
                 <div className="dcard__eta">
                   <span className={`etak ${etaCls}`}>
@@ -101,6 +178,7 @@ export function DungeonPage({ game }: { game: Game }) {
           {state.attemptPhase === 'running' ? (
             <div className="attempt-box">
               <div className="progress-label">Simulando combate…</div>
+              <DungeonMinimap replay={replay} progress={progress} />
               <div className="progress-track">
                 <div className="progress-fill" style={{ width: `${progress}%` }} />
               </div>
@@ -129,9 +207,7 @@ export function DungeonPage({ game }: { game: Game }) {
               {outcome.survivable ? (
                 <div className="tiny muted">O servidor cria um snapshot imutável e simula. Espera de teste reduzida.</div>
               ) : (
-                <div className="tiny blood">
-                  Aviso: res. a fogo {power.fireRes}% &lt; exigido {dungeon.fireReq}%. Alto risco de morte.
-                </div>
+                <div className="tiny blood">Aviso: {outcome.cause}</div>
               )}
             </div>
           )}
@@ -154,15 +230,24 @@ function Report({ game }: { game: Game }) {
     ['Resultado', r.win ? 'Dungeon concluída' : 'Herói tombou'],
   ]
 
+  const loseBanner =
+    r.reason === 'stall'
+      ? 'DERROTA — TENTATIVA ESTAGNOU'
+      : r.reason === 'attrition'
+        ? 'DERROTA — MORTE POR ATRITO'
+        : r.breakingType
+          ? `DERROTA — CAMADA DE ${TYPE_LABEL[r.breakingType].toUpperCase()} QUEBROU`
+          : 'DERROTA'
+
   return (
     <div className="report">
       <div className={`report__banner ${r.win ? 'win' : 'lose'}`}>
-        {r.win ? 'VITÓRIA' : 'DERROTA — MORTE POR FOGO'}
+        {r.win ? 'VITÓRIA' : loseBanner}
       </div>
       <div className="report__cause">
         {r.win
-          ? `Concluído em ${fmtTime(dur)} com res. a fogo de ${r.fireRes}%. O DPS real medido foi ${fmtInt(r.dps)}.`
-          : `Você chegou ao chefe, mas recebeu o pico como FOGO com apenas ${r.fireRes}% de resistência (a dungeon exige ${r.fireReq}%). Ainda assim, o DPS real foi medido: ${fmtInt(r.dps)}.`}
+          ? `Concluído em ${fmtTime(dur)}. ${r.cause} O DPS real medido foi ${fmtInt(r.dps)}.`
+          : `${r.cause} Ainda assim, o DPS real foi medido: ${fmtInt(r.dps)}.`}
       </div>
       <div className="report__grid">
         <div className="report__col">
@@ -180,14 +265,14 @@ function Report({ game }: { game: Game }) {
             {r.win ? (
               <>
                 <li>DPS real de {fmtInt(r.dps)} conhecido — agora exibido em todas as telas.</li>
-                <li>Res. a fogo {r.fireRes}% (exigido {r.fireReq}%) evitou a morte.</li>
+                <li>Todas as camadas de defesa exigidas seguraram.</li>
                 <li>Trocar item, craftar ou mexer na árvore volta a esconder o DPS real.</li>
               </>
             ) : (
               <>
-                <li>Dano não foi o problema: o DPS real é {fmtInt(r.dps)}.</li>
-                <li>Morte na fase ígnea — res. a fogo {r.fireRes}% abaixo do exigido {r.fireReq}%.</li>
-                <li>Equipe o "Guarda-Chama" (baú) ou aloque "Cerne Térmico" e tente de novo.</li>
+                <li>Dano bruto não foi (só) o problema: o DPS real é {fmtInt(r.dps)}.</li>
+                <li>{r.cause}</li>
+                <li>Ajuste a camada/composição apontada acima e tente de novo.</li>
               </>
             )}
           </ul>
@@ -214,6 +299,83 @@ function Report({ game }: { game: Game }) {
         <button className="btn" onClick={() => game.resetAttempt()}>
           {r.win ? 'Nova tentativa' : 'Voltar'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+/* ===================== MINIMAPA (replay leve da tentativa) ===================== */
+
+const MARKER_GLYPH: Record<MarkerKind, string> = {
+  player: '◈',
+  enemy: '•',
+  elite: '✦',
+  boss: '☠',
+  loot: '◆',
+}
+
+/** Posição do herói interpolada ao longo da rota, conforme o progresso (0–1). */
+function heroPosition(replay: DungeonReplay, t: number): { x: number; y: number } {
+  const pts = replay.path
+  if (pts.length === 1) return pts[0]
+  // A rota é percorrida até `endsAt` (morte antecipada para antes do fim).
+  const walked = Math.min(t, replay.endsAt) / replay.endsAt
+  const span = (pts.length - 1) * Math.max(0, Math.min(1, walked))
+  const i = Math.min(pts.length - 2, Math.floor(span))
+  const f = span - i
+  return {
+    x: pts[i].x + (pts[i + 1].x - pts[i].x) * f,
+    y: pts[i].y + (pts[i + 1].y - pts[i].y) * f,
+  }
+}
+
+function DungeonMinimap({ replay, progress }: { replay: DungeonReplay; progress: number }) {
+  const t = progress / 100
+  const hero = heroPosition(replay, t)
+  // Morte: quando o progresso ultrapassa o fim da rota numa tentativa perdida.
+  const died = !replay.win && t >= replay.endsAt - 0.001
+
+  return (
+    <div className="minimap" role="img" aria-label="Progresso da tentativa no minimapa">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="minimap__svg">
+        {/* Rota percorrida (rastro do herói). */}
+        <polyline
+          className="minimap__trail"
+          points={replay.path.map((p) => `${p.x},${p.y}`).join(' ')}
+        />
+        {/* Marcadores: acendem quando o progresso passa do seu `at`. */}
+        {replay.markers
+          .filter((m) => m.kind !== 'player')
+          .map((m) => {
+            const reached = t >= m.at
+            const cls =
+              `mk mk--${m.kind}` +
+              (reached ? ' is-on' : '') +
+              (m.kind === 'loot' && m.rarity ? ` ${rarClass(m.rarity)}` : '')
+            return (
+              <text key={m.id} x={m.x} y={m.y} className={cls} dominantBaseline="central" textAnchor="middle">
+                <title>{m.label}</title>
+                {MARKER_GLYPH[m.kind]}
+              </text>
+            )
+          })}
+        {/* Herói. */}
+        <text
+          x={hero.x}
+          y={hero.y}
+          className={`mk mk--player${died ? ' is-dead' : ''}`}
+          dominantBaseline="central"
+          textAnchor="middle"
+        >
+          {died ? '✝' : MARKER_GLYPH.player}
+        </text>
+      </svg>
+      <div className="minimap__legend tiny muted">
+        <span className="mk--player">◈ herói</span>
+        <span className="mk--enemy">• inimigo</span>
+        <span className="mk--elite">✦ elite</span>
+        <span className="mk--boss">☠ chefe</span>
+        <span className="mk--loot rar-rare">◆ loot raro</span>
       </div>
     </div>
   )

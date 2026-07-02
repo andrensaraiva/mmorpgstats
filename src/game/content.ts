@@ -10,6 +10,7 @@ import type {
   ItemBase,
   ItemInstance,
   MarketListing,
+  Monster,
   NavItem,
   OrbDefinition,
   PassiveTree,
@@ -28,6 +29,67 @@ export const CHARACTER = {
   className: 'Marcial — Rompe-Ferro',
   level: 42,
 }
+
+/**
+ * As 3 classes do MVP (ver docs/CONTENT_CATALOG.md §2). Cada uma alcança
+ * vários arquétipos por arma + árvore + suportes. `glyph`/`accent` alimentam
+ * as telas de seleção e criação de personagem.
+ */
+export interface ClassOption {
+  id: 'martial' | 'precision' | 'arcane'
+  name: string
+  primaryAttr: 'Força' | 'Destreza' | 'Inteligência'
+  glyph: string
+  accent: 'blood' | 'teal' | 'spectral'
+  tagline: string
+  fantasy: string
+  weapons: string
+  archetypes: string[]
+  ascendancies: string[]
+}
+
+export const CLASSES: ClassOption[] = [
+  {
+    id: 'martial',
+    name: 'Marcial',
+    primaryAttr: 'Força',
+    glyph: '⚔',
+    accent: 'blood',
+    tagline: 'Resolve na força e no aço.',
+    fantasy: 'Estar na cara do inimigo: impacto físico, sangramento e a muralha que não cede.',
+    weapons: 'Machado · Maça · Espada · Escudo',
+    archetypes: ['Investida / sangramento', 'Guardião / bloqueio'],
+    ascendancies: ['Furioso', 'Baluarte'],
+  },
+  {
+    id: 'precision',
+    name: 'Precisão',
+    primaryAttr: 'Destreza',
+    glyph: '➹',
+    accent: 'teal',
+    tagline: 'Reflexo e cálculo; nenhuma flecha erra duas vezes.',
+    fantasy: 'Velocidade, crítico e explosões em cadeia — ou armadilhas que decidem a luta antes dela.',
+    weapons: 'Arco · Besta · Adaga · Armadilha',
+    archetypes: ['Arqueiro crítico (raio)', 'Explosões / AoE', 'Assassino / armadilha'],
+    ascendancies: ['Perseguidor', 'Engenhoso'],
+  },
+  {
+    id: 'arcane',
+    name: 'Arcano',
+    primaryAttr: 'Inteligência',
+    glyph: '✶',
+    accent: 'spectral',
+    tagline: 'A chama e a praga obedecem à mesma voz.',
+    fantasy: 'Limpar a tela com fogo, frio e raio — ou plantar a semente e ver o inimigo derreter.',
+    weapons: 'Cajado · Foco (varinha/orbe)',
+    archetypes: ['Elementalista (screen-clear)', 'Pestilência / DoT'],
+    ascendancies: ['Elementalista', 'Pestilento'],
+  },
+]
+
+export const classById: Record<string, ClassOption> = Object.fromEntries(
+  CLASSES.map((c) => [c.id, c]),
+)
 
 /** Habilidade que dita o DPS agregado (soquetes dela multiplicam o dano). */
 export const MAIN_SKILL_ID = 'sk_strike'
@@ -418,6 +480,83 @@ export const TREE: PassiveTree = {
   ],
 }
 
+/* ===================== BESTIÁRIO ===================== */
+
+/**
+ * Bestiário: cada monstro tem papel (arquétipo), perfil de dano e forças/fraquezas.
+ * Alimenta a composição das dungeons e o balanceamento por ameaça.
+ * Ver docs/BESTIARY_AND_DUNGEONS.md §3.
+ */
+export const BESTIARY: Monster[] = [
+  {
+    id: 'm-ghoul', name: 'Carniçal em Bando', role: 'swarmer', rank: 'normal',
+    damage: { phys: 40 }, hitSize: 'small', life: 220,
+    weakTo: ['fire'], resistant: [],
+  },
+  {
+    id: 'm-brute', name: 'Bruto da Cripta', role: 'bruiser', rank: 'normal',
+    damage: { phys: 280 }, hitSize: 'huge', life: 1800,
+    resistant: ['phys'],
+  },
+  {
+    id: 'm-ember-archer', name: 'Arqueiro de Brasa', role: 'ranged', rank: 'normal',
+    damage: { fire: 120 }, hitSize: 'medium', life: 340,
+    weakTo: ['cold'],
+  },
+  {
+    id: 'm-frost-caster', name: 'Conjurador Gélido', role: 'caster', rank: 'normal',
+    damage: { cold: 160 }, hitSize: 'medium', life: 300,
+    weakTo: ['fire'], resistant: ['cold'],
+  },
+  {
+    id: 'm-bat', name: 'Morcego de Cinza', role: 'aerial', rank: 'normal',
+    damage: { phys: 30, lightning: 40 }, hitSize: 'small', life: 160, aerial: true,
+    weakTo: ['lightning'],
+  },
+  {
+    id: 'm-shaman', name: 'Xamã da Brasa', role: 'support', rank: 'normal',
+    damage: { fire: 60 }, hitSize: 'small', life: 420,
+    weakTo: ['cold'],
+  },
+  {
+    id: 'e-teleporter', name: 'Elite Saltador', role: 'caster', rank: 'elite',
+    damage: { lightning: 260 }, hitSize: 'huge', life: 2600,
+    resistant: ['lightning'],
+    affixes: [
+      { id: 'af-teleport', name: 'Saltador', effect: 'Teleporta em cima do herói e descarrega raio.', addsDamageType: 'lightning' },
+      { id: 'af-fast', name: 'Veloz', effect: 'Move e ataca muito rápido; exige chill/freeze ou mitigação de golpes.' },
+    ],
+  },
+  {
+    id: 'e-fire-enchanted', name: 'Sentinela Fire-Enchanted', role: 'bruiser', rank: 'elite',
+    damage: { phys: 180, fire: 140 }, hitSize: 'huge', life: 3200,
+    resistant: ['fire', 'phys'],
+    affixes: [
+      { id: 'af-fire-ench', name: 'Fire-Enchanted', effect: 'Adiciona dano de fogo ao pacote; explode ao morrer.', addsDamageType: 'fire' },
+      { id: 'af-shield', name: 'Barreira', effect: 'Ganha escudo periódico; premia burst para quebrar.' },
+    ],
+  },
+  {
+    id: 'b-executioner', name: 'O Carrasco Ígneo', role: 'bruiser', rank: 'boss',
+    damage: { phys: 320 }, hitSize: 'huge', life: 24000,
+    resistant: ['phys', 'fire'],
+    phases: [
+      { damage: { phys: 320 }, note: 'Fase 1 — golpe físico enorme: testa EHP/bloqueio contra golpe grande.' },
+      { damage: { fire: 400 }, note: 'Fase 2 — incendeia a arena: testa res. a fogo.' },
+      { damage: { phys: 120, fire: 120 }, note: 'Fase 3 — invoca carniçais: testa AoE e vazão.' },
+    ],
+  },
+  {
+    id: 'b-abyss-warden', name: 'Guardião do Fosso', role: 'caster', rank: 'boss',
+    damage: { chaos: 260, cold: 140 }, hitSize: 'huge', life: 30000,
+    resistant: ['chaos', 'cold'],
+    phases: [
+      { damage: { chaos: 260 }, note: 'Fase 1 — caos que fura escudo de energia: testa res. a caos e vida.' },
+      { damage: { cold: 240, chaos: 160 }, note: 'Fase 2 — frio + caos: chill trava enquanto o caos derrete.' },
+    ],
+  },
+]
+
 /* ===================== DUNGEONS ===================== */
 
 export const DUNGEONS: Dungeon[] = [
@@ -425,24 +564,60 @@ export const DUNGEONS: Dungeon[] = [
     id: 'd-crypt', name: 'Cripta dos Suspiros', biome: 'Necrópole', lvl: 44, diff: 4200, fireThreat: true, fireReq: 45,
     mods: ['Grupos numerosos', 'Dano físico elevado', 'Chefe ígneo (fase 2)'],
     desc: 'Corredores estreitos e mortos-vivos em bando; o carrasco incendeia a arena na fase final.',
+    composition: {
+      density: 'swarm', forceProfile: 'weak-horde', damageMix: ['phys', 'fire'],
+      hasAerial: false, mobilityDemand: 'low', roles: ['swarmer', 'bruiser'],
+      waves: [
+        { monsterId: 'm-ghoul', count: 18 },
+        { monsterId: 'm-brute', count: 3 },
+        { monsterId: 'b-executioner', count: 1 },
+      ],
+    },
     reward: { baseId: 'great_sword', rarity: 'rare', name: 'Ceifador Trovejante' },
   },
   {
     id: 'd-forge', name: 'Fornalha Rachada', biome: 'Caverna Ígnea', lvl: 46, diff: 5200, fireThreat: true, fireReq: 55,
     mods: ['Dano de fogo intenso', 'Chão em chamas', 'Elite adicional'],
-    desc: 'Rios de lava e sentinelas de brasa. Pune quem entra com pouca resistência a fogo.',
+    desc: 'Rios de lava e sentinelas de brasa. Poucos, porém fortes: pune quem entra com pouca res. a fogo.',
+    composition: {
+      density: 'sparse', forceProfile: 'few-strong', damageMix: ['fire', 'phys'],
+      hasAerial: false, mobilityDemand: 'medium', roles: ['ranged', 'bruiser', 'support'],
+      waves: [
+        { monsterId: 'm-ember-archer', count: 5 },
+        { monsterId: 'm-shaman', count: 2 },
+        { monsterId: 'e-fire-enchanted', count: 1 },
+      ],
+    },
     reward: { baseId: 'plate_chest', rarity: 'rare', name: 'Couraça Recozida' },
   },
   {
     id: 'd-glacier', name: 'Sepulcro Glacial', biome: 'Geleira', lvl: 45, diff: 4600, fireThreat: false, fireReq: 0,
-    mods: ['Lentidão', 'Dano de frio', 'Recurso reduzido'],
-    desc: 'O frio drena o recurso e retarda ataques. Exige gestão de recurso e mitigação de frio.',
+    mods: ['Lentidão', 'Dano de frio', 'Enxame aéreo'],
+    desc: 'Conjuradores gélidos e morcegos que ignoram o chão. Exige mitigação de frio e dano que atinge o ar.',
+    composition: {
+      density: 'medium', forceProfile: 'mixed', damageMix: ['cold', 'lightning'],
+      hasAerial: true, mobilityDemand: 'high', roles: ['caster', 'aerial', 'ranged'],
+      waves: [
+        { monsterId: 'm-frost-caster', count: 6 },
+        { monsterId: 'm-bat', count: 12 },
+        { monsterId: 'e-teleporter', count: 1 },
+      ],
+    },
     reward: { baseId: 'amber_amulet', rarity: 'rare', name: 'Selo Congelado' },
   },
   {
     id: 'd-abyss', name: 'Fenda das Cinzas', biome: 'Abismo Sazonal', lvl: 48, diff: 6400, fireThreat: true, fireReq: 60, season: true,
-    mods: ['Mecânica sazonal', 'Inimigos fortalecidos', 'Fragmentos exclusivos'],
-    desc: 'Encontro opcional da temporada: aceite o risco, colha fragmentos e enfrente o chefe sazonal.',
+    mods: ['Mecânica sazonal', 'Inimigos fortalecidos', 'Dano de caos que fura ES'],
+    desc: 'Encontro sazonal: caos + frio do Guardião do Fosso. Aceite o risco, colha fragmentos.',
+    composition: {
+      density: 'medium', forceProfile: 'few-strong', damageMix: ['chaos', 'cold', 'fire'],
+      hasAerial: true, mobilityDemand: 'high', roles: ['caster', 'aerial', 'bruiser'],
+      waves: [
+        { monsterId: 'm-bat', count: 10 },
+        { monsterId: 'e-fire-enchanted', count: 2 },
+        { monsterId: 'b-abyss-warden', count: 1 },
+      ],
+    },
     reward: { baseId: 'war_axe', rarity: 'rare', name: 'Britadora do Fosso' },
   },
 ]

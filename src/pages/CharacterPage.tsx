@@ -1,10 +1,15 @@
-import { CHARACTER, META } from '../game/content'
+import { META, classById } from '../game/content'
+import type { CharacterSummary } from '../game/session'
 import type { Game } from '../game/store'
 import { fmtInt } from '../ui/format'
 import { PageHead, Panel, PowerBar } from '../ui/atoms'
 
-export function CharacterPage({ game }: { game: Game }) {
+export function CharacterPage({ game, hero }: { game: Game; hero?: CharacterSummary | null }) {
   const p = game.power
+  const cls = hero ? classById[hero.classId] : null
+  const heroName = hero?.name ?? '—'
+  const heroClass = cls?.name ?? '—'
+  const heroLevel = hero?.level ?? 1
 
   const attrs: Array<[string, string]> = [
     ['Força', fmtInt(p.strength)],
@@ -36,14 +41,15 @@ export function CharacterPage({ game }: { game: Game }) {
         <div className="panel__body">
           <div className="sheet">
             <div>
-              <div className="portrait">
+              <div className={`portrait${cls ? ` portrait--${cls.accent}` : ''}`}>
                 <div className="fig" />
-                <div className="frame-name">{CHARACTER.name}</div>
+                {cls ? <div className="portrait__glyph">{cls.glyph}</div> : null}
+                <div className="frame-name">{heroName}</div>
               </div>
               <div className="charmeta mt10">
-                <div className="charmeta__cls">{CHARACTER.className}</div>
+                <div className="charmeta__cls">{heroClass}</div>
                 <div className="tiny muted">
-                  Nível {CHARACTER.level} · {META.league}
+                  Nível {heroLevel} · {META.league}
                 </div>
               </div>
             </div>

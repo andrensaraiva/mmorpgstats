@@ -25,7 +25,9 @@ import {
 } from './engine'
 import type {
   CurrencyPouch,
+  DamageType,
   EquipSlot,
+  FailReason,
   ItemInstance,
   Measured,
   OrbId,
@@ -42,6 +44,10 @@ export interface AttemptResult {
   seconds: number
   fireRes: number
   fireReq: number
+  /** Causa detalhada da tentativa (relatório causal). */
+  cause: string
+  reason: FailReason
+  breakingType?: DamageType
 }
 
 export interface GameState {
