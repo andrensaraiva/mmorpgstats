@@ -181,10 +181,11 @@ export function HeroBoard({
 
 /* ---------- tooltip de item ---------- */
 
-export function ItemTooltip({ item }: { item: ItemInstance }) {
+/** Conteúdo do tooltip de item (sem o contêiner), reutilizável no tooltip flutuante. */
+export function ItemTooltipBody({ item }: { item: ItemInstance }) {
   const base = getBase(item.baseId)
   return (
-    <div className="itip">
+    <>
       <div className={`it-name ${rarClass(item.rarity)}`}>
         {item.name}
         {item.corrupted ? <span className="it-corrupt"> · CORROMPIDO</span> : null}
@@ -201,11 +202,19 @@ export function ItemTooltip({ item }: { item: ItemInstance }) {
           </div>
         ) : (
           <div className="it-aff" key={i}>
-            <span className="t">{`P·T${a.tier}`.replace('P·', a.kind === 'prefix' ? 'P·' : 'S·')}</span> {a.text}
+            <span className="t">{a.kind === 'prefix' ? 'P' : 'S'}·T{a.tier}</span> {a.text}
           </div>
         ),
       )}
       {item.flavor ? <div className="it-uniq it-flavor">{item.flavor}</div> : null}
+    </>
+  )
+}
+
+export function ItemTooltip({ item }: { item: ItemInstance }) {
+  return (
+    <div className="itip">
+      <ItemTooltipBody item={item} />
     </div>
   )
 }

@@ -3,8 +3,10 @@ import type { Game } from '../game/store'
 import { RARITY_LABEL, fmtInt, rarClass } from '../ui/format'
 import { PageHead, Panel } from '../ui/atoms'
 import { ItemIcon } from '../ui/icons'
+import { tipProps, useItemTip } from '../ui/tooltip'
 
 export function MarketPage(_props: { game: Game }) {
+  const tip = useItemTip()
   return (
     <>
       <PageHead title="Mercado" crumb="Anúncios por preço fixo · economia isolada por liga" />
@@ -38,10 +40,28 @@ export function MarketPage(_props: { game: Game }) {
           <tbody>
             {MARKET.map((m) => {
               const base = getBase(m.baseId)
+              const body = (
+                <>
+                  <div className={`it-name ${rarClass(m.rarity)}`}>{m.name}</div>
+                  <div className="it-base">
+                    {base.name} · {RARITY_LABEL[m.rarity]} · nv {m.lvl}
+                  </div>
+                  <div className="it-sep" />
+                  <div className="it-aff">
+                    Preço: {fmtInt(m.price)} Selos · vendedor {m.seller}
+                  </div>
+                  <div className="tiny muted">Inspecione no jogo para ver os afixos.</div>
+                </>
+              )
               return (
                 <tr key={m.id}>
                   <td>
-                    <div className="item-cell">
+                    <button
+                      className={`item-cell as-inspect ${rarClass(m.rarity)}`}
+                      aria-label={`Inspecionar ${m.name}`}
+                      {...tipProps(tip, body)}
+                      onClick={(e) => tip.togglePin(body, e.currentTarget)}
+                    >
                       <div className={`ic ${rarClass(m.rarity)}`}>
                         <ItemIcon baseId={m.baseId} />
                       </div>
@@ -51,7 +71,7 @@ export function MarketPage(_props: { game: Game }) {
                           {base.name} · {RARITY_LABEL[m.rarity]} · nv {m.lvl}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   </td>
                   <td className="seller">{m.seller}</td>
                   <td className="price">

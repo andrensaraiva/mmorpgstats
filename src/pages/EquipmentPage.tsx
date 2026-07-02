@@ -4,8 +4,9 @@ import { itemByUid, selectEquippedItems } from '../game/store'
 import type { Game } from '../game/store'
 import type { EquipSlot, ItemInstance, OrbId } from '../game/types'
 import { RARITY_LABEL, fmtInt, rarClass } from '../ui/format'
-import { ItemTooltip, PageHead, Panel, PowerBar } from '../ui/atoms'
+import { ItemTooltipBody, PageHead, Panel, PowerBar } from '../ui/atoms'
 import { ItemIcon, OrbIcon } from '../ui/icons'
+import { tipProps, useItemTip } from '../ui/tooltip'
 
 const DOLL: EquipSlot[][] = [
   ['weapon', 'head', 'offhand'],
@@ -27,6 +28,7 @@ const SLOT_LABEL: Record<EquipSlot, string> = {
 
 export function EquipmentPage({ game }: { game: Game }) {
   const { state } = game
+  const tip = useItemTip()
   const byUid = new Map(state.inventory.map((i) => [i.uid, i]))
   const selected = itemByUid(state, state.selectedItemUid)
 
@@ -61,7 +63,9 @@ export function EquipmentPage({ game }: { game: Game }) {
                       <button
                         className={`slot ${rarClass(item.rarity)} b-${item.rarity}${isSel ? ' is-sel' : ''}`}
                         key={slot}
+                        aria-label={`${SLOT_LABEL[slot]}: ${item.name}`}
                         onClick={() => game.selectItem(item.uid)}
+                        {...tipProps(tip, <ItemTooltipBody item={item} />)}
                       >
                         <div className="slot__type">{SLOT_LABEL[slot]}</div>
                         <div className="slot__icon">
@@ -69,7 +73,6 @@ export function EquipmentPage({ game }: { game: Game }) {
                         </div>
                         <div className="slot__name">{item.name}</div>
                         {item.corrupted ? <span className="corrupt-seal" title="Corrompido" /> : null}
-                        <ItemTooltip item={item} />
                       </button>
                     )
                   }),
@@ -104,12 +107,19 @@ export function EquipmentPage({ game }: { game: Game }) {
 }
 
 function InventoryRow({ item, game }: { item: ItemInstance; game: Game }) {
+  const tip = useItemTip()
   const base = getBase(item.baseId)
   const isSel = item.uid === game.state.selectedItemUid
   const isEquipped = Object.values(game.state.equipped).includes(item.uid)
+  const body = <ItemTooltipBody item={item} />
   return (
     <div className={`loot-row ${rarClass(item.rarity)}${isSel ? ' is-sel' : ''}`}>
-      <button className={`ic ${rarClass(item.rarity)}`} onClick={() => game.selectItem(item.uid)}>
+      <button
+        className={`ic ${rarClass(item.rarity)}`}
+        aria-label={`Inspecionar ${item.name}`}
+        {...tipProps(tip, body)}
+        onClick={(e) => tip.togglePin(body, e.currentTarget)}
+      >
         <ItemIcon baseId={item.baseId} />
         {item.corrupted ? <span className="corrupt-seal" title="Corrompido" /> : null}
       </button>
@@ -122,14 +132,9 @@ function InventoryRow({ item, game }: { item: ItemInstance; game: Game }) {
           {base.name} · {RARITY_LABEL[item.rarity]}
         </div>
       </div>
-      <button
-        className="btn btn--sm"
-        onClick={() => game.equip(item)}
-        disabled={isEquipped}
-      >
+      <button className="btn btn--sm" onClick={() => game.equip(item)} disabled={isEquipped}>
         {isEquipped ? 'Equipado' : 'Equipar'}
       </button>
-      <ItemTooltip item={item} />
     </div>
   )
 }

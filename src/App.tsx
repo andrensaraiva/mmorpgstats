@@ -12,12 +12,13 @@ import { MarketPage } from './pages/MarketPage'
 import { PortalPage } from './pages/PortalPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { TreePage } from './pages/TreePage'
+import { ItemTipProvider } from './ui/tooltip'
 
 export function App() {
   const session = useSession()
 
   return (
-    <>
+    <ItemTipProvider>
       <div className="vignette" aria-hidden="true" />
       <div className="scanlines" aria-hidden="true" />
 
@@ -25,7 +26,7 @@ export function App() {
       {session.phase === 'select' && <CharacterSelectPage session={session} />}
       {session.phase === 'create' && <CharacterCreatePage session={session} />}
       {session.phase === 'game' && <GameShell session={session} />}
-    </>
+    </ItemTipProvider>
   )
 }
 

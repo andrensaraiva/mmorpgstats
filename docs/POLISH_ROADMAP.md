@@ -169,4 +169,9 @@ A UI polida nesta fase foi desenhada para receber essas trilhas sem retrabalho: 
   - `EquipmentPage.ComparePanel`: ao selecionar um item, recalcula o poder com ele encaixado no slot (via `engine.aggregate`) e mostra **delta equipado × candidato** — DPS (est.), vida efetiva, armadura e as 4 resistências, com verde/vermelho por sinal. Pilar "loot que muda decisões".
   - DPS aparece rotulado "est." para respeitar a mecânica de números descobertos.
   - Motor intocado; `typecheck` + 29 testes + `build` verdes.
-  - **Resto da Fase B (próximo):** tooltip acessível — flutuante posicionado sem cortar, **fixável por toque/clique** no mobile, fechável por Esc, com `aria`; e realce do afixo alterado após craft.
+- **02/07/2026 — Fase B (parte 2: tooltip acessível) entregue.**
+  - `src/ui/tooltip.tsx`: `ItemTipProvider` + `useItemTip`/`tipProps` + `FloatingTip` — popover único, transiente no hover **e no foco de teclado**, **fixável por clique/toque**, fechável por Esc/clique fora/botão ×, **posicionado sem cortar** (flip acima/abaixo + clamp horizontal), com `role` tooltip/dialog e `aria-label`.
+  - `ItemTooltipBody` extraído em `atoms.tsx` (conteúdo reutilizável); provider embrulha o `App` (auto-contido p/ testes).
+  - Ligado em Equipamento (slots do manequim + ícone do inventário como gatilho de inspeção) e Mercado (célula vira botão com resumo). Foco visível consistente nos gatilhos.
+  - **Fase B concluída.** Pendente menor: realce do afixo alterado após craft (encaixa na Fase C).
+  - **Próximo:** Fase C — microinterações e o momento "número descoberto" (count-up do DPS, feedback de equipar/craftar, confirmação do Vaal).
