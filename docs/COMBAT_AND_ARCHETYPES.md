@@ -10,6 +10,29 @@
 
 # Parte A — Motor & Balanceamento
 
+## A0. Atributos & recursos do personagem (denominador comum dos ARPGs)
+
+Mantemos **o conjunto que aparece em PoE2, Diablo 4 e Last Epoch** — a base legível para conteúdo e balanceamento (o herói tem que fazer sentido para quem vem do gênero). Hoje o `aggregate` já entrega um subconjunto; o resto entra nas fases M1–M3. **Regra:** não inventar atributo que não exista no gênero.
+
+**Recursos (pools):**
+- **Vida** — pool principal. ✅ implementado.
+- **Recurso de habilidade (mana/energia)** — custo das skills + regeneração. ⏳ custos já existem nas skills; o pool/regen entra com o consumo real (M3/M5).
+- **Reserva (tipo Spirit)** — orçamento para auras/efeitos persistentes. ⏳ planejado (ver POE2_REFERENCE).
+
+**Atributos primários:** Força / Destreza / Inteligência — ✅ já no `Power`; viram gate de requisitos e escalas por atributo.
+
+**Camadas de defesa (ordem: resistência → mitigação → pool):**
+- **Resistências** fogo/frio/raio/caos (teto 75%, elevável). ✅
+- **Armadura** — mitiga físico; passará a **depender do tamanho do golpe**. ✅ (simplificada) → refino em **M2**.
+- **Evasão** — chance de o inimigo errar o golpe (teto 95%). ⏳ **M2**.
+- **Escudo de energia / buffer** — absorve **antes** da vida (exceto DoT de sangramento/veneno). ⏳ **M2**.
+- **Bloqueio** (teto 75%). ✅
+- **Regeneração / recuperação** de vida e recurso. ⏳ M2/M3.
+
+**Ofensa:** crítico (chance × multi) ✅ · velocidade de ataque/conjuração ✅ (ataque) · **penetração** ⏳ M1 · **ailments/DoT** ⏳ M3.
+
+> Ou seja: **outros atributos entram sim** — evasão/ES e o refino de armadura em **M2**, recurso/reserva junto do consumo real. A UI de Personagem (dashboard) já reserva espaço para exibi-los quando o motor os calcular.
+
 ## A1. Diagnóstico: o que já bate e o que falta
 
 Boa notícia: a **estrutura** do nosso motor já segue o padrão PoE (adicionado → aumentado → mais). Falta **largura**.
