@@ -1,14 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ORBS, getBase } from '../game/content'
 import { aggregate, canCraft } from '../game/engine'
 import { itemByUid, selectEquippedItems } from '../game/store'
 import type { Game, LastCraft } from '../game/store'
-import type { EquipSlot, ItemInstance, OrbId } from '../game/types'
+import type { BaseKind, EquipSlot, ItemInstance, OrbId, Rarity } from '../game/types'
 import { RARITY_LABEL, fmtInt, rarClass } from '../ui/format'
 import { ItemTooltipBody, PageHead, Panel, PowerBar } from '../ui/atoms'
 import { ItemIcon, OrbIcon } from '../ui/icons'
 import { tipProps, useItemTip } from '../ui/tooltip'
 import { diffAffixes } from '../ui/craftDiff'
+import {
+  KIND_LABEL,
+  applyInventoryFilter,
+  emptyFilter,
+  type InvSort,
+} from '../ui/inventoryFilter'
 
 const DOLL: EquipSlot[][] = [
   ['weapon', 'head', 'offhand'],
@@ -96,18 +102,149 @@ export function EquipmentPage({ game }: { game: Game }) {
         </div>
       </div>
 
-      <Panel title="Inventário & Baú" right={<span className="tiny">{state.inventory.length} itens</span>}>
-        <div className="small mb8">
-          Cada item nasce de uma <b>base + raridade + afixos sorteados</b>. Selecione um item para craftar, ou equipe-o
-          direto no manequim.
-        </div>
+      <InventorySection game={game} />
+    </>
+  )
+}
+
+/* ---------- inventário com filtros/busca/ordenação (Fase D) ---------- */
+
+const SORT_OPTIONS: Array<[InvSort, string]> = [
+  ['recent', 'Recentes'],
+  ['rarity', 'Raridade'],
+  ['name', 'Nome'],
+  ['kind', 'Categoria'],
+]
+
+const RARITY_OPTIONS: Rarity[] = ['common', 'magic', 'rare', 'unique']
+
+/** Categorias mostradas na barra de filtro (ordem de leitura do manequim). */
+const KIND_ORDER: BaseKind[] = ['weapon', 'offhand', 'head', 'chest', 'gloves', 'boots', 'amulet', 'ring']
+
+function InventorySection({ game }: { game: Game }) {
+  const { inventory } = game.state
+  const [filter, setFilter] = useState(emptyFilter)
+
+  const visible = useMemo(() => applyInventoryFilter(inventory, filter), [inventory, filter])
+
+  // Só oferece categorias/raridades que existem no baú (barra enxuta).
+  const availableKinds = useMemo(() => {
+    const set = new Set<BaseKind>()
+    for (const it of inventory) set.add(getBase(it.baseId).kind)
+    return KIND_ORDER.filter((k) => set.has(k))
+  }, [inventory])
+
+  const toggleKind = (k: BaseKind) =>
+    setFilter((f) => {
+      const kinds = new Set(f.kinds)
+      kinds.has(k) ? kinds.delete(k) : kinds.add(k)
+      return { ...f, kinds }
+    })
+  const toggleRarity = (r: Rarity) =>
+    setFilter((f) => {
+      const rarities = new Set(f.rarities)
+      rarities.has(r) ? rarities.delete(r) : rarities.add(r)
+      return { ...f, rarities }
+    })
+
+  const filtered = visible.length !== inventory.length
+  const clearAll = () => setFilter(emptyFilter())
+
+  return (
+    <Panel
+      title="Inventário & Baú"
+      right={
+        <span className="tiny">
+          {filtered ? `${visible.length} de ${inventory.length}` : `${inventory.length}`} itens
+        </span>
+      }
+    >
+      <div className="small mb8">
+        Cada item nasce de uma <b>base + raridade + afixos sorteados</b>. Selecione um item para craftar, ou equipe-o
+        direto no manequim.
+      </div>
+
+      <div className="inv-tools" role="search">
+        <input
+          className="inv-search"
+          type="search"
+          value={filter.query}
+          placeholder="Buscar por afixo, nome ou base…"
+          aria-label="Buscar itens por afixo, nome ou base"
+          onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))}
+        />
+        <label className="inv-sort">
+          <span className="tiny muted">Ordenar</span>
+          <select
+            value={filter.sort}
+            aria-label="Ordenar inventário"
+            onChange={(e) => setFilter((f) => ({ ...f, sort: e.target.value as InvSort }))}
+          >
+            {SORT_OPTIONS.map(([v, label]) => (
+              <option key={v} value={v}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="inv-chips">
+        {availableKinds.map((k) => (
+          <button
+            key={k}
+            className={`fchip${filter.kinds.has(k) ? ' is-on' : ''}`}
+            aria-pressed={filter.kinds.has(k)}
+            onClick={() => toggleKind(k)}
+          >
+            {KIND_LABEL[k]}
+          </button>
+        ))}
+        <span className="fchip-sep" aria-hidden="true" />
+        {RARITY_OPTIONS.map((r) => (
+          <button
+            key={r}
+            className={`fchip fchip--${r}${filter.rarities.has(r) ? ' is-on' : ''}`}
+            aria-pressed={filter.rarities.has(r)}
+            onClick={() => toggleRarity(r)}
+          >
+            {RARITY_LABEL[r]}
+          </button>
+        ))}
+        {filtered ? (
+          <button className="fchip fchip--clear" onClick={clearAll}>
+            Limpar ✕
+          </button>
+        ) : null}
+      </div>
+
+      {visible.length > 0 ? (
         <div className="inv-grid">
-          {state.inventory.map((item) => (
+          {visible.map((item) => (
             <InventoryRow key={item.uid} item={item} game={game} />
           ))}
         </div>
-      </Panel>
-    </>
+      ) : (
+        <div className="inv-empty">
+          {inventory.length === 0 ? (
+            <>
+              <div className="inv-empty__title">Baú vazio</div>
+              <div className="tiny muted">Vença dungeons para o loot começar a cair aqui.</div>
+            </>
+          ) : (
+            <>
+              <div className="inv-empty__title">Nenhum item bate com o filtro</div>
+              <div className="tiny muted">
+                Ajuste a busca ou as categorias.{' '}
+                <button className="link-btn" onClick={clearAll}>
+                  Limpar filtros
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </Panel>
   )
 }
 
@@ -223,8 +360,6 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
                 </button>
               </div>
             </div>
-          ) : game.state.notice ? (
-            <div className="tiny craft-notice mt8">{game.state.notice}</div>
           ) : (
             <div className="tiny muted mt8">
               Craftar gera uma nova instância do item — o DPS medido é invalidado e precisa ser re-testado.

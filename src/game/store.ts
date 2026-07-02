@@ -64,6 +64,15 @@ export interface LastCraft {
   seq: number
 }
 
+/** Tom de um toast — colore o realce lateral e o ícone. */
+export type ToastTone = 'good' | 'warn' | 'info' | 'loot'
+
+export interface Toast {
+  id: number
+  tone: ToastTone
+  message: string
+}
+
 export interface GameState {
   page: ViewId
   inventory: ItemInstance[]
@@ -81,6 +90,8 @@ export interface GameState {
   lastCraft: LastCraft | null
   /** Último equipar — dirige o pulso de encaixe no slot (Fase C). */
   lastEquip: { slot: EquipSlot; seq: number } | null
+  /** Fila de toasts efêmeros (Fase D) — eventos transientes unificados. */
+  toasts: Toast[]
 }
 
 function initState(): GameState {
@@ -100,11 +111,13 @@ function initState(): GameState {
     notice: null,
     lastCraft: null,
     lastEquip: null,
+    toasts: [],
   }
 }
 
 let craftSeq = 0
 let equipSeq = 0
+let toastSeq = 0
 
 type Action =
   | { type: 'navigate'; page: ViewId }
@@ -120,11 +133,28 @@ type Action =
   | { type: 'attemptFinish'; result: AttemptResult; measured: Measured | null }
   | { type: 'attemptReset' }
   | { type: 'notice'; message: string | null }
+  | { type: 'pushToast'; tone: ToastTone; message: string }
+  | { type: 'dismissToast'; id: number }
 
 const adjacency = treeAdjacency()
 
 function pointsUsed(allocated: Set<string>): number {
   return allocated.size - 1 // origem não conta
+}
+
+const MAX_TOASTS = 4
+
+/** Empilha um toast, mantendo no máximo os últimos MAX_TOASTS. */
+function withToast(toasts: Toast[], tone: ToastTone, message: string): Toast[] {
+  const next = [...toasts, { id: ++toastSeq, tone, message }]
+  return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
+}
+
+/** Tom do toast conforme a raridade resultante de um craft. */
+function craftTone(item: ItemInstance): ToastTone {
+  if (item.corrupted) return 'warn'
+  if (item.rarity === 'unique' || item.rarity === 'rare') return 'loot'
+  return 'good'
 }
 
 function reducer(state: GameState, action: Action): GameState {
@@ -206,6 +236,7 @@ function reducer(state: GameState, action: Action): GameState {
         selectedItemUid: action.item.uid,
         notice: action.notice,
         lastCraft: { uid: action.item.uid, orb: action.orb, before: action.before, seq: ++craftSeq },
+        toasts: withToast(state.toasts, craftTone(action.item), action.notice),
       }
     }
 
@@ -221,6 +252,13 @@ function reducer(state: GameState, action: Action): GameState {
         attemptPhase: 'report',
         attemptResult: action.result,
         measured: action.measured ?? state.measured,
+        toasts: action.measured
+          ? withToast(
+              state.toasts,
+              'info',
+              `DPS real descoberto: ${Math.round(action.measured.dps).toLocaleString('pt-BR')}`,
+            )
+          : state.toasts,
       }
 
     case 'attemptReset':
@@ -228,6 +266,12 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'notice':
       return { ...state, notice: action.message }
+
+    case 'pushToast':
+      return { ...state, toasts: withToast(state.toasts, action.tone, action.message) }
+
+    case 'dismissToast':
+      return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) }
 
     default:
       return state
@@ -305,11 +349,17 @@ export function useGame() {
       }
     }
     if (!slotAccepts(base, target)) {
-      dispatch({ type: 'notice', message: `${base.name} não vai no slot ${target}.` })
+      dispatch({ type: 'pushToast', tone: 'warn', message: `${base.name} não vai no slot ${target}.` })
       return
     }
     dispatch({ type: 'equip', uid: item.uid, slot: target })
   }, [])
+
+  const pushToast = useCallback(
+    (tone: ToastTone, message: string) => dispatch({ type: 'pushToast', tone, message }),
+    [],
+  )
+  const dismissToast = useCallback((id: number) => dispatch({ type: 'dismissToast', id }), [])
 
   const unequip = useCallback((slot: EquipSlot) => dispatch({ type: 'unequip', slot }), [])
   const toggleNode = useCallback((nodeId: string) => dispatch({ type: 'toggleNode', nodeId }), [])
@@ -326,13 +376,13 @@ export function useGame() {
       const item = itemByUid(state, state.selectedItemUid)
       if (!item) return
       if (state.currency[orb] <= 0) {
-        dispatch({ type: 'notice', message: 'Sem moedas suficientes desse orbe.' })
+        dispatch({ type: 'pushToast', tone: 'warn', message: 'Sem moedas suficientes desse orbe.' })
         return
       }
       const rng = makeRng((Date.now() ^ (item.uid.length * 2654435761)) >>> 0)
       const result = craftItem(orb, item, rng)
       if (!result.ok) {
-        dispatch({ type: 'notice', message: result.message })
+        dispatch({ type: 'pushToast', tone: 'warn', message: result.message })
         return
       }
       dispatch({ type: 'replaceItem', before: item, item: result.item, orb, notice: result.message })
@@ -356,6 +406,8 @@ export function useGame() {
     selectDungeon,
     resetAttempt,
     applyCraft,
+    pushToast,
+    dismissToast,
     dispatch,
   }
 }

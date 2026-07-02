@@ -12,7 +12,10 @@ import { MarketPage } from './pages/MarketPage'
 import { PortalPage } from './pages/PortalPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { TreePage } from './pages/TreePage'
+import { useState } from 'react'
 import { ItemTipProvider } from './ui/tooltip'
+import { ToastHost } from './ui/Toasts'
+import { Onboarding, hasSeenOnboarding } from './ui/Onboarding'
 
 export function App() {
   const session = useSession()
@@ -36,6 +39,8 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
   const { page } = game.state
   const hero = session.activeCharacter
   const cls = hero ? classById[hero.classId] : null
+  // Onboarding aparece na primeira sessão; o "?" na top bar reabre.
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding())
 
   return (
     <div className="app">
@@ -53,6 +58,14 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
           </div>
         </div>
         <div className="app-top__right">
+          <button
+            className="help-btn"
+            onClick={() => setShowOnboarding(true)}
+            title="Como jogar"
+            aria-label="Como jogar"
+          >
+            ?
+          </button>
           <button
             className="acct acct--btn"
             onClick={session.leaveGame}
@@ -102,6 +115,9 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
         <span className="sep">·</span>
         <span>© 2026 Mayouma Studio</span>
       </footer>
+
+      <ToastHost toasts={game.state.toasts} onDismiss={game.dismissToast} />
+      {showOnboarding ? <Onboarding onClose={() => setShowOnboarding(false)} /> : null}
     </div>
   )
 }
