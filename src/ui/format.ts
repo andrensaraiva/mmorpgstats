@@ -12,6 +12,19 @@ export function fmtTime(sec: number): string {
   return `${m}m ${r < 10 ? '0' + r : r}s`
 }
 
+/** Contagem regressiva com dias/horas/min (para timers do Portal). */
+export function fmtCountdown(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  const d = Math.floor(s / 86400)
+  const h = Math.floor((s % 86400) / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = s % 60
+  if (d > 0) return `${d}d ${h}h ${m}m`
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m ${ss < 10 ? '0' + ss : ss}s`
+  return `${ss}s`
+}
+
 export function rarClass(r: Rarity): string {
   return `rar-${r}`
 }

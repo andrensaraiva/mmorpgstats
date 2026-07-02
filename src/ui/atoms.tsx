@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { getBase } from '../game/content'
+import { classById, getBase } from '../game/content'
 import { itemGlyph, resolveItemMods } from '../game/engine'
 import type { ItemInstance, Power } from '../game/types'
+import type { CharacterSummary } from '../game/session'
 import { estimateRange } from '../game/engine'
 import { RARITY_LABEL, fmtInt, rarClass } from './format'
 
@@ -70,6 +71,110 @@ export function PowerBar({ power, knownDps }: { power: Power; knownDps: number |
         sub={fireWarn ? 'baixa — risco ígneo' : 'adequada'}
       />
       <PStat k="Soquetes" v={`${power.supportCap}/hab.`} sub="suportes por habilidade" />
+    </div>
+  )
+}
+
+/* ---------- resistências (todas, não só fogo) ---------- */
+
+/** Tom por risco: negativo = crítico, abaixo de 45% = baixo, senão adequado. */
+function resTone(v: number): string {
+  if (v < 0) return 'res--crit'
+  if (v < 45) return 'res--warn'
+  return 'res--ok'
+}
+
+export function ResistRow({ power }: { power: Power }) {
+  const items: Array<[string, number, string]> = [
+    ['Fogo', power.fireRes, 'res-fire'],
+    ['Frio', power.coldRes, 'res-cold'],
+    ['Raio', power.litRes, 'res-lit'],
+    ['Caos', power.chaosRes, 'res-chaos'],
+  ]
+  return (
+    <div className="resrow">
+      {items.map(([k, v, c]) => (
+        <div className={`res ${c} ${resTone(v)}`} key={k}>
+          <span className="res__k">{k}</span>
+          <span className="res__v">{v}%</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ---------- retrato do herói (reutilizável) ---------- */
+
+export function HeroPortrait({ hero }: { hero?: CharacterSummary | null }) {
+  const cls = hero ? classById[hero.classId] : null
+  return (
+    <div>
+      <div className={`portrait${cls ? ` portrait--${cls.accent}` : ''}`}>
+        <div className="fig" />
+        {cls ? <div className="portrait__glyph">{cls.glyph}</div> : null}
+        <div className="frame-name">{hero?.name ?? '—'}</div>
+      </div>
+      <div className="charmeta mt10">
+        <div className="charmeta__cls">{cls?.name ?? '—'}</div>
+        <div className="tiny muted">Nível {hero?.level ?? 1}</div>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- detalhes de poder: DPS + vida + resistências + defesa ---------- */
+
+export function PowerDetails({ power, knownDps }: { power: Power; knownDps: number | null }) {
+  const [lo, hi] = estimateRange(power.dps)
+  const chips: Array<[string, string]> = [
+    ['Armadura', fmtInt(power.armour)],
+    ['Bloqueio', `${power.block}%`],
+    ['Crítico', `${power.critChance}% · x${(power.critMulti / 100).toFixed(2)}`],
+    ['Vel. ataque', `${power.attackSpeed.toFixed(2)}/s`],
+    ['Soquetes', `${power.supportCap}/hab.`],
+  ]
+  return (
+    <div>
+      <div className="hb-head">
+        {knownDps != null ? (
+          <PStat k="DPS (medido)" cls="dmg" v={fmtInt(knownDps)} sub="testado em dungeon" />
+        ) : (
+          <PStat k="DPS (estimado)" cls="dmg est" v={`≈ ${fmtInt(lo)}–${fmtInt(hi)}`} sub="teste numa dungeon p/ o real" />
+        )}
+        <PStat k="Vida efetiva" cls="def" v={fmtInt(power.ehp)} sub="sobrevivência" />
+      </div>
+      <div className="eyebrow mt10">
+        Resistências <span className="tiny muted">· teto 75%</span>
+      </div>
+      <ResistRow power={power} />
+      <div className="eyebrow mt10">Defesa & crítico</div>
+      <div className="statchips">
+        {chips.map(([k, v]) => (
+          <div className="statchip" key={k}>
+            <span className="sc-k">{k}</span>
+            <span className="sc-v">{v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- quadro do herói: retrato + poder (usado no Portal) ---------- */
+
+export function HeroBoard({
+  power,
+  knownDps,
+  hero,
+}: {
+  power: Power
+  knownDps: number | null
+  hero?: CharacterSummary | null
+}) {
+  return (
+    <div className="sheet">
+      <HeroPortrait hero={hero} />
+      <PowerDetails power={power} knownDps={knownDps} />
     </div>
   )
 }

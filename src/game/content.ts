@@ -771,3 +771,221 @@ export const STARTER_CURRENCY = {
   divine: 3,
   vaal: 4,
 }
+
+/* ===================== MUNDO VIVO (Portal) ===================== */
+/**
+ * O Portal é o hub do mundo persistente. Além de notícias e status, ele mostra
+ * o que está acontecendo AGORA na liga: estado da temporada, mecânica sazonal
+ * coletiva, eventos rotativos com timer, pulso econômico, ladder e um feed vivo.
+ * Tudo demonstrativo por ora; futuramente vem do servidor. Ver docs/UX_IA.md.
+ */
+
+export interface SeasonState {
+  name: string
+  day: number
+  totalDays: number
+  phase: string
+  endsInSec: number
+}
+export const SEASON: SeasonState = {
+  name: META.league,
+  day: 38,
+  totalDays: 42,
+  phase: 'Corrida — economia aberta',
+  endsInSec: 3 * 86400 + 14 * 3600 + 22 * 60,
+}
+
+export interface SeasonMechanic {
+  name: string
+  blurb: string
+  bossName: string
+  collectivePct: number
+  youPct: number
+  fragmentLabel: string
+  fragments: number
+}
+export const SEASON_MECHANIC: SeasonMechanic = {
+  name: 'Fenda das Cinzas',
+  blurb:
+    'A liga inteira alimenta a fenda com fragmentos. Quando encher, o Guardião do Fosso desperta para todos, com tabela de drop própria por tempo limitado.',
+  bossName: 'Guardião do Fosso',
+  collectivePct: 63,
+  youPct: 4,
+  fragmentLabel: 'Fragmentos de Cinza',
+  fragments: 27,
+}
+
+export type WorldEventKind = 'drop' | 'danger' | 'boss'
+export interface WorldEvent {
+  id: string
+  name: string
+  desc: string
+  kind: WorldEventKind
+  endsInSec: number
+}
+export const WORLD_EVENTS: WorldEvent[] = [
+  { id: 'ev-frag', name: 'Chuva de Fragmentos', desc: 'A Fenda das Cinzas rende +50% de fragmentos.', kind: 'drop', endsInSec: 2 * 3600 + 14 * 60 },
+  { id: 'ev-invasion', name: 'Invasão nas Docas', desc: 'Elites extras nas dungeons; chance de raro aumentada.', kind: 'danger', endsInSec: 47 * 60 },
+  { id: 'ev-boss', name: 'O Carrasco desperta', desc: 'Chefe mundial disponível a todos por tempo limitado.', kind: 'boss', endsInSec: 5 * 3600 + 9 * 60 },
+]
+
+export interface EconomyPulse {
+  divineName: string
+  divineInChaos: number
+  trendPct: number
+  hotBase: string
+  hotNote: string
+}
+export const ECONOMY: EconomyPulse = {
+  divineName: 'Orbe Divino',
+  divineInChaos: 214,
+  trendPct: 6,
+  hotBase: 'Espada Longa',
+  hotNote: 'procura alta por bases de crítico',
+}
+
+export interface LadderRow {
+  rank: number
+  name: string
+  cls: string
+  score: string
+  you?: boolean
+}
+export const LADDER: LadderRow[] = [
+  { rank: 1, name: 'Kaelros', cls: 'Precisão', score: 'Prof. 214' },
+  { rank: 2, name: 'Vheyra, a Cinza', cls: 'Marcial', score: 'Prof. 198', you: true },
+  { rank: 3, name: 'Nyx Umbral', cls: 'Arcano', score: 'Prof. 187' },
+  { rank: 4, name: 'Dain Ferro-Vivo', cls: 'Marcial', score: 'Prof. 176' },
+]
+
+export type FeedKind = 'drop' | 'record' | 'boss' | 'sale' | 'mechanic' | 'league'
+export interface FeedEntry {
+  id: string
+  kind: FeedKind
+  who: string
+  text: string
+  ago: string
+}
+/** Feed inicial (com "há X min"). O Portal vai prependando novos ao vivo. */
+export const WORLD_FEED_SEED: FeedEntry[] = [
+  { id: 'seed1', kind: 'record', who: 'Kaelros', text: 'alcançou Profundidade 214 no mapa infinito', ago: 'há 2 min' },
+  { id: 'seed2', kind: 'sale', who: 'tradehall_02', text: 'vendeu Coração do Vulcão por 9 Divinos', ago: 'há 4 min' },
+  { id: 'seed3', kind: 'boss', who: 'Nyx Umbral', text: 'derrotou o Guardião do Fosso (Hardcore)', ago: 'há 7 min' },
+  { id: 'seed4', kind: 'drop', who: 'ashen_v', text: 'encontrou Guarda-Chama na Fornalha Rachada', ago: 'há 9 min' },
+  { id: 'seed5', kind: 'mechanic', who: 'A Fenda', text: 'chegou a 63% — o Guardião se agita', ago: 'há 12 min' },
+]
+/** Modelos sorteados para alimentar o feed ao vivo (ago = "agora"). */
+export const WORLD_FEED_POOL: Array<{ kind: FeedKind; who: string; text: string }> = [
+  { kind: 'drop', who: 'CorvoCego', text: 'encontrou um Coração do Vulcão na Cripta dos Suspiros' },
+  { kind: 'record', who: 'SellaVento', text: 'bateu recorde de menor tempo na Fornalha Rachada' },
+  { kind: 'sale', who: 'nyx_market', text: 'vendeu uma Britadora do Fosso por 2 Divinos' },
+  { kind: 'boss', who: 'Ossian', text: 'derrotou O Carrasco Ígneo em Hardcore' },
+  { kind: 'mechanic', who: 'A Fenda', text: 'recebeu 1.400 fragmentos da liga neste minuto' },
+  { kind: 'drop', who: 'LiraPrateada', text: 'corrompeu um anel e revelou um implícito raro com o Vaal' },
+  { kind: 'league', who: 'DainFerro', text: 'abriu uma liga privada "Só Marcial, sem únicos"' },
+  { kind: 'record', who: 'Kaelros', text: 'assumiu o topo do ranking de DPS do encontro padrão' },
+  { kind: 'sale', who: 'cold_dealer', text: 'listou Grevas Ligeiras por 55 Caos no mercado' },
+  { kind: 'boss', who: 'A Liga', text: 'está a poucos fragmentos de despertar o Guardião do Fosso' },
+]
+
+/* ===================== DASHBOARD DO PERSONAGEM ===================== */
+/**
+ * Dados demonstrativos do dashboard do herói (progressão, loadouts, histórico,
+ * recordes, conquistas, estatísticas). Futuramente vêm do servidor/perfil.
+ * A "build atual" na tela usa o estado REAL do jogo; isto aqui é a memória
+ * do personagem — o que ele já passou. Ver docs/UX_IA.md e docs/PROGRESSION_AND_STORY.md.
+ */
+
+export interface Progression {
+  xpPct: number
+  xpLabel: string
+  campaignAct: number
+  campaignActs: number
+  campaignPct: number
+  depthRecord: number
+  playtime: string
+  daysInLeague: number
+}
+export const PROGRESSION: Progression = {
+  xpPct: 62,
+  xpLabel: '1,24 M / 2,00 M XP',
+  campaignAct: 3,
+  campaignActs: 6,
+  campaignPct: 50,
+  depthRecord: 198,
+  playtime: '14h 32m',
+  daysInLeague: 5,
+}
+
+export interface Loadout {
+  id: string
+  name: string
+  focus: string
+  weapon: string
+  measuredDps: number | null
+  updated: string
+  active?: boolean
+}
+export const LOADOUTS: Loadout[] = [
+  { id: 'l1', name: 'Rompe-Ferro', focus: 'Uso geral — físico de golpe único', weapon: 'Britadora do Fosso', measuredDps: null, updated: 'agora', active: true },
+  { id: 'l2', name: 'Ceifa Veloz', focus: 'Limpeza rápida de grupos', weapon: 'Adaga de Brasa', measuredDps: 312, updated: 'há 2 dias' },
+  { id: 'l3', name: 'Muralha', focus: 'Sobrevivência / chefe', weapon: 'Escudo Pavês + Maça', measuredDps: 176, updated: 'há 5 dias' },
+]
+
+export interface AttemptLog {
+  id: string
+  dungeon: string
+  result: 'win' | 'loss'
+  detail: string
+  when: string
+}
+export const ATTEMPT_HISTORY: AttemptLog[] = [
+  { id: 'a1', dungeon: 'Cripta dos Suspiros', result: 'loss', detail: 'morte por fogo · fase 2', when: 'há 12 min' },
+  { id: 'a2', dungeon: 'Sepulcro Glacial', result: 'win', detail: '5m10s · sem mortes', when: 'há 40 min' },
+  { id: 'a3', dungeon: 'Fornalha Rachada', result: 'loss', detail: 'morte por fogo · 2m41s', when: 'há 1h' },
+  { id: 'a4', dungeon: 'Cripta dos Suspiros', result: 'win', detail: '4m02s · recorde pessoal', when: 'há 2h' },
+  { id: 'a5', dungeon: 'Fenda das Cinzas', result: 'win', detail: 'chefe sazonal · 7m18s', when: 'ontem' },
+]
+
+export interface RecordEntry {
+  label: string
+  value: string
+  rank: string
+}
+export const RECORDS: RecordEntry[] = [
+  { label: 'Maior profundidade concluída', value: 'Prof. 198', rank: '#2 na liga' },
+  { label: 'Menor tempo — Cripta dos Suspiros', value: '4m 02s', rank: '#7' },
+  { label: 'Maior DPS — encontro padrão', value: '3,74 M', rank: '#3' },
+  { label: 'Chefe sazonal', value: 'derrotado', rank: '—' },
+]
+
+export interface Achievement {
+  id: string
+  name: string
+  desc: string
+  done: boolean
+}
+export const ACHIEVEMENTS: Achievement[] = [
+  { id: 'ac1', name: 'Primeira Queda', desc: 'Perca uma dungeon e leia o relatório.', done: true },
+  { id: 'ac2', name: 'Ajuste Fino', desc: 'Vença após uma derrota trocando um equipamento.', done: true },
+  { id: 'ac3', name: 'Ferreiro', desc: 'Aplique 10 orbes de crafting.', done: true },
+  { id: 'ac4', name: 'Corruptor', desc: 'Corrompa um item com o Orbe Vaal.', done: false },
+  { id: 'ac5', name: 'Explorador', desc: 'Alcance profundidade 250 no mapa infinito.', done: false },
+]
+
+export interface LifetimeStats {
+  attempts: number
+  wins: number
+  deaths: number
+  bossKills: number
+  itemsFound: number
+  favoriteSkill: string
+}
+export const LIFETIME: LifetimeStats = {
+  attempts: 143,
+  wins: 96,
+  deaths: 47,
+  bossKills: 12,
+  itemsFound: 812,
+  favoriteSkill: 'Golpe Rompedor',
+}
