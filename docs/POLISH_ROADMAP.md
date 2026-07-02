@@ -174,4 +174,6 @@ A UI polida nesta fase foi desenhada para receber essas trilhas sem retrabalho: 
   - `ItemTooltipBody` extraído em `atoms.tsx` (conteúdo reutilizável); provider embrulha o `App` (auto-contido p/ testes).
   - Ligado em Equipamento (slots do manequim + ícone do inventário como gatilho de inspeção) e Mercado (célula vira botão com resumo). Foco visível consistente nos gatilhos.
   - **Fase B concluída.** Pendente menor: realce do afixo alterado após craft (encaixa na Fase C).
-  - **Próximo:** Fase C — microinterações e o momento "número descoberto" (count-up do DPS, feedback de equipar/craftar, confirmação do Vaal).
+- **02/07/2026 — Fase C iniciada.**
+  - **Confirmação obrigatória do Vaal** (corrupção irreversível): clicar no Orbe Vaal abre um `alertdialog` inline pedindo confirmação (Corromper / Cancelar), em vez de disparar direto. Reseta ao trocar de item.
+  - **Próximo na Fase C:** count-up animado do DPS ao ser revelado na dungeon (floreio "DESCOBERTO"), feedback de equipar/craftar (fumaça/brilho do orbe, moedas decrementando), realce do afixo alterado após craft — tudo sob `prefers-reduced-motion`.

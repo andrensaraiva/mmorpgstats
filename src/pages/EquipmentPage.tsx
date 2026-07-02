@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { ORBS, getBase } from '../game/content'
 import { aggregate, canCraft } from '../game/engine'
 import { itemByUid, selectEquippedItems } from '../game/store'
@@ -140,6 +141,10 @@ function InventoryRow({ item, game }: { item: ItemInstance; game: Game }) {
 }
 
 function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | null }) {
+  const [confirmVaal, setConfirmVaal] = useState(false)
+  // Cancela a confirmação pendente ao trocar de item selecionado.
+  useEffect(() => setConfirmVaal(false), [selected?.uid])
+
   return (
     <Panel title="Bancada de Crafting">
       {selected ? (
@@ -165,10 +170,16 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
               return (
                 <button
                   key={orb.id}
-                  className="orb-btn"
+                  className={`orb-btn${orb.id === 'vaal' ? ' orb-btn--vaal' : ''}`}
                   disabled={!usable}
                   title={orb.description}
-                  onClick={() => game.applyCraft(orb.id as OrbId)}
+                  onClick={() => {
+                    if (orb.id === 'vaal') {
+                      setConfirmVaal(true)
+                      return
+                    }
+                    game.applyCraft(orb.id as OrbId)
+                  }}
                 >
                   <OrbIcon id={orb.id as OrbId} />
                   <span className="orb-name">{orb.short}</span>
@@ -177,7 +188,31 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
               )
             })}
           </div>
-          {game.state.notice ? <div className="tiny craft-notice mt8">{game.state.notice}</div> : (
+
+          {confirmVaal ? (
+            <div className="vaal-confirm" role="alertdialog" aria-label="Confirmar corrupção">
+              <div className="tiny">
+                O <b>Orbe Vaal</b> corrompe <b>{selected.name}</b> de forma <b>irreversível</b>: resultado imprevisível
+                e o item fica travado para sempre (sem mais crafting).
+              </div>
+              <div className="vaal-confirm__actions">
+                <button
+                  className="btn btn--blood btn--sm"
+                  onClick={() => {
+                    setConfirmVaal(false)
+                    game.applyCraft('vaal')
+                  }}
+                >
+                  Corromper mesmo assim
+                </button>
+                <button className="btn btn--sm" onClick={() => setConfirmVaal(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : game.state.notice ? (
+            <div className="tiny craft-notice mt8">{game.state.notice}</div>
+          ) : (
             <div className="tiny muted mt8">
               Craftar gera uma nova instância do item — o DPS medido é invalidado e precisa ser re-testado.
             </div>
