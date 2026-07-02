@@ -3327,3 +3327,75 @@ a {
   height: 22px;
   filter: drop-shadow(0 0 4px rgb(0 0 0 / 40%));
 }
+
+/* ===================== FASE B — COMPARAÇÃO DE ITEM ===================== */
+
+.cmp {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line2);
+}
+
+.cmp__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.cmp-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px dotted rgb(255 255 255 / 5%);
+  font-size: 0.78rem;
+}
+
+.cmp-row:last-child {
+  border-bottom: 0;
+}
+
+.cmp-k {
+  color: var(--text-dim);
+}
+
+.cmp-v {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+}
+
+.cmp-cur {
+  color: var(--text-mut);
+}
+
+.cmp-arrow {
+  color: var(--text-mut);
+}
+
+.cmp-cand {
+  color: #d7cdb8;
+}
+
+.cmp-delta {
+  min-width: 52px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.cmp-up {
+  color: #8fd07a;
+}
+
+.cmp-down {
+  color: var(--blood-hi);
+}
+
+.cmp-flat {
+  color: var(--text-mut);
+}

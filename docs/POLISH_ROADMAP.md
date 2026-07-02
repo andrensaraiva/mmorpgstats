@@ -165,4 +165,8 @@ A UI polida nesta fase foi desenhada para receber essas trilhas sem retrabalho: 
   - Molduras: glow de raridade no tile do ícone + **selo de corrompido** (marca Vaal).
   - Motor (`src/game/`) intocado. `typecheck` + 29 testes + `build` verdes.
   - Pendente da Fase A/F: F1 (tokens semânticos), F3 (galeria de componentes), ícones de gema de habilidade, arte final (Fase F).
-- **Próximo:** Fase B — comparação equipado × candidato + tooltip acessível/fixável no toque.
+- **02/07/2026 — Fase B (parte 1: comparação) entregue.**
+  - `EquipmentPage.ComparePanel`: ao selecionar um item, recalcula o poder com ele encaixado no slot (via `engine.aggregate`) e mostra **delta equipado × candidato** — DPS (est.), vida efetiva, armadura e as 4 resistências, com verde/vermelho por sinal. Pilar "loot que muda decisões".
+  - DPS aparece rotulado "est." para respeitar a mecânica de números descobertos.
+  - Motor intocado; `typecheck` + 29 testes + `build` verdes.
+  - **Resto da Fase B (próximo):** tooltip acessível — flutuante posicionado sem cortar, **fixável por toque/clique** no mobile, fechável por Esc, com `aria`; e realce do afixo alterado após craft.

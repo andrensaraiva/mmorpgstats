@@ -1,9 +1,9 @@
 import { ORBS, getBase } from '../game/content'
-import { canCraft } from '../game/engine'
-import { itemByUid } from '../game/store'
+import { aggregate, canCraft } from '../game/engine'
+import { itemByUid, selectEquippedItems } from '../game/store'
 import type { Game } from '../game/store'
 import type { EquipSlot, ItemInstance, OrbId } from '../game/types'
-import { RARITY_LABEL, rarClass } from '../ui/format'
+import { RARITY_LABEL, fmtInt, rarClass } from '../ui/format'
 import { ItemTooltip, PageHead, Panel, PowerBar } from '../ui/atoms'
 import { ItemIcon, OrbIcon } from '../ui/icons'
 
@@ -152,6 +152,7 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
             </div>
           </div>
           <ItemModList item={selected} />
+          <ComparePanel game={game} item={selected} />
           <div className="orb-grid">
             {ORBS.map((orb) => {
               const count = game.state.currency[orb.id]
@@ -201,6 +202,77 @@ function ItemModList({ item }: { item: ItemInstance }) {
         ),
       )}
       {item.affixes.length === 0 && !base.implicitText ? <div className="tiny muted">sem modificadores</div> : null}
+    </div>
+  )
+}
+
+/**
+ * Comparação equipado × candidato: recalcula o poder com o item encaixado no
+ * seu slot e mostra o delta de DPS/vida/armadura/resistências. Pilar "loot que
+ * muda decisões". DPS é rotulado "est." (mecânica de números descobertos).
+ */
+function ComparePanel({ game, item }: { game: Game; item: ItemInstance }) {
+  const base = getBase(item.baseId)
+  const slot: EquipSlot = base.kind === 'ring' ? 'ring1' : (base.kind as EquipSlot)
+  const st = game.state
+  const curUid = st.equipped[slot]
+  const equippedItems = selectEquippedItems(st)
+  const candidateEquipped = equippedItems
+    .filter((i) => i.uid !== curUid && i.uid !== item.uid)
+    .concat([item])
+
+  const cur = game.power
+  const cand = aggregate({ equipped: candidateEquipped, allocated: st.allocated, sockets: st.sockets })
+
+  const isEquipped = Object.values(st.equipped).includes(item.uid)
+  const vsName = curUid ? equippedItems.find((i) => i.uid === curUid)?.name ?? 'equipado' : 'slot vazio'
+
+  const rows: Array<[string, number, number, string]> = [
+    ['DPS (est.)', Math.round(cur.dps), Math.round(cand.dps), ''],
+    ['Vida efetiva', cur.ehp, cand.ehp, ''],
+    ['Armadura', cur.armour, cand.armour, ''],
+    ['Res. Fogo', cur.fireRes, cand.fireRes, '%'],
+    ['Res. Frio', cur.coldRes, cand.coldRes, '%'],
+    ['Res. Raio', cur.litRes, cand.litRes, '%'],
+    ['Res. Caos', cur.chaosRes, cand.chaosRes, '%'],
+  ]
+
+  return (
+    <div className="cmp">
+      <div className="cmp__head">
+        <span className="eyebrow">Comparar com o equipado</span>
+        <span className="tiny muted">
+          vs. {isEquipped ? 'atual (já equipado)' : vsName} · slot {SLOT_LABEL[slot]}
+        </span>
+      </div>
+      {rows.map(([label, c, n, unit]) => (
+        <DeltaRow key={label} label={label} cur={c} cand={n} unit={unit} />
+      ))}
+    </div>
+  )
+}
+
+function DeltaRow({ label, cur, cand, unit }: { label: string; cur: number; cand: number; unit: string }) {
+  const d = cand - cur
+  const cls = d > 0 ? 'cmp-up' : d < 0 ? 'cmp-down' : 'cmp-flat'
+  const sign = d > 0 ? '+' : ''
+  return (
+    <div className="cmp-row">
+      <span className="cmp-k">{label}</span>
+      <span className="cmp-v">
+        <span className="cmp-cur">
+          {fmtInt(cur)}
+          {unit}
+        </span>
+        <span className="cmp-arrow">→</span>
+        <span className="cmp-cand">
+          {fmtInt(cand)}
+          {unit}
+        </span>
+        <span className={`cmp-delta ${cls}`}>
+          {d === 0 ? '—' : `${sign}${fmtInt(d)}${unit}`}
+        </span>
+      </span>
     </div>
   )
 }
