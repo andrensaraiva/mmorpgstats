@@ -242,19 +242,23 @@ function Report({ game }: { game: Game }) {
           : 'DERROTA'
 
   return (
-    <div className="report">
-      <div className={`report__banner ${r.win ? 'win' : 'lose'}`}>
+    <div className="report" role="region" aria-label="Relatório da tentativa">
+      <h3 className={`report__banner ${r.win ? 'win' : 'lose'}`} aria-live="polite">
         {r.win ? 'VITÓRIA' : loseBanner}
-      </div>
+      </h3>
       <div className="report__cause">
         {r.win
           ? `Concluído em ${fmtTime(dur)}. ${r.cause}`
           : `${r.cause} Ainda assim, o combate mediu o seu dano real.`}
       </div>
-      <div className="discovery">
-        <span className="discovery__tag">◈ DPS real descoberto ◈</span>
-        <CountUp to={r.dps} className="discovery__val" />
-        <span className="discovery__sub">medido em combate · válido só para esta build exata</span>
+      <div className="discovery" aria-label={`DPS real descoberto: ${fmtInt(r.dps)}, medido em combate.`}>
+        <span className="discovery__tag" aria-hidden="true">
+          ◈ DPS real descoberto ◈
+        </span>
+        <CountUp to={r.dps} className="discovery__val" aria-hidden />
+        <span className="discovery__sub" aria-hidden="true">
+          medido em combate · válido só para esta build exata
+        </span>
       </div>
       <div className="report__grid">
         <div className="report__col">
@@ -344,8 +348,15 @@ function DungeonMinimap({ replay, progress }: { replay: DungeonReplay; progress:
   // Morte: quando o progresso ultrapassa o fim da rota numa tentativa perdida.
   const died = !replay.win && t >= replay.endsAt - 0.001
 
+  // Resumo textual do avanço, para leitor de tela.
+  const cleared = replay.markers.filter((m) => m.kind !== 'player' && t >= m.at).length
+  const total = replay.markers.filter((m) => m.kind !== 'player').length
+  const label = died
+    ? 'Herói tombou durante a tentativa.'
+    : `Progresso da tentativa: ${Math.round(progress)}%. ${cleared} de ${total} encontros alcançados.`
+
   return (
-    <div className="minimap" role="img" aria-label="Progresso da tentativa no minimapa">
+    <div className="minimap" role="img" aria-label={label}>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="minimap__svg">
         {/* Rota percorrida (rastro do herói). */}
         <polyline

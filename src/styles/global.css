@@ -20,7 +20,7 @@
   --gold-deep: #4a3714;
 
   --blood: #8b1a1a;
-  --blood-hi: #d8453b;
+  --blood-hi: #e35a4f;
   --teal: #4fb3a6;
   --teal-hi: #8fe0d4;
   --spectral: #5a8fc4;
@@ -28,7 +28,8 @@
 
   --text: #cbd3dd;
   --text-dim: #8b96a4;
-  --text-mut: #5f6a78;
+  /* clareado p/ AA (~5:1) — antes #5f6a78 ficava ~3:1 sobre painéis */
+  --text-mut: #7c8899;
   --parch: #e6d6ab;
 
   --r-common: #c8c8c0;
@@ -39,6 +40,43 @@
   --hp: #c0352b;
   --mp: #2f6fd0;
   --reserve: #7a5fc0;
+
+  /* ---- tokens semânticos (F1) — ver docs/THEME.md ----
+     Escala de espaçamento (múltiplos de 4). */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Raios de canto. */
+  --radius-sm: 2px;
+  --radius: 3px;
+  --radius-lg: 6px;
+  --radius-round: 999px;
+
+  /* Sombras/elevação. */
+  --shadow-1: 0 2px 8px rgb(0 0 0 / 40%);
+  --shadow-2: 0 10px 30px rgb(0 0 0 / 55%);
+  --shadow-3: 0 24px 70px rgb(0 0 0 / 75%);
+
+  /* Movimento (durações e curvas) — respeitam prefers-reduced-motion. */
+  --dur-fast: 0.12s;
+  --dur: 0.2s;
+  --dur-slow: 0.85s;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ease-snap: cubic-bezier(0.2, 1.4, 0.4, 1);
+
+  /* Tipografia (famílias semânticas). */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'EB Garamond', Georgia, serif;
+
+  /* Alvo mínimo de toque (a11y — Fase E). */
+  --touch-min: 44px;
+
+  /* Foco visível (a11y). */
+  --focus-ring: 2px solid var(--gold-hi);
 }
 
 * {
@@ -1579,6 +1617,7 @@ a {
   overflow: hidden;
 }
 .report__banner {
+  margin: 0;
   padding: 16px;
   text-align: center;
   font-family: 'Cinzel';
@@ -3904,24 +3943,25 @@ a {
   pointer-events: none;
 }
 
+/* Refeito com tokens semânticos (F1) — ver docs/THEME.md */
 .toast {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
+  gap: var(--sp-2);
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--sp-3) var(--sp-3);
   border: 1px solid var(--line2);
   border-left-width: 3px;
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: linear-gradient(180deg, #171c24, #0f1319);
   color: var(--text);
   text-align: left;
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: var(--font-body);
   font-size: 13px;
   cursor: pointer;
   pointer-events: auto;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 55%);
-  animation: toast-in 0.28s ease-out;
+  box-shadow: var(--shadow-2);
+  animation: toast-in var(--dur) var(--ease-out);
 }
 .toast:hover {
   border-color: var(--gold-lo);
@@ -4118,4 +4158,135 @@ a {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* ===================== FASE E — ACESSIBILIDADE (teclado / foco) ===================== */
+
+/* foco visível nos nós da árvore (outline não pinta bem em <g>: usamos o anel) */
+.tnode:focus {
+  outline: none;
+}
+.tnode:focus-visible .ring,
+.tnode:focus-visible .kd {
+  stroke: var(--gold-hi);
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 6px rgb(236 208 133 / 90%));
+}
+.tnode:focus-visible .lbl {
+  fill: var(--parch);
+}
+
+/* foco visível nos soquetes/palette da SkillsPage */
+.socket:focus-visible,
+.pal-chip:focus-visible,
+.navbtn:focus-visible,
+.acct--btn:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 2px;
+}
+
+/* link de "pular para o conteúdo" (aparece só no foco) */
+.skip-link {
+  position: fixed;
+  top: -60px;
+  left: 12px;
+  z-index: 10002;
+  padding: 8px 14px;
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  background: #0c0f14;
+  color: var(--gold-hi);
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  transition: top 0.15s;
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+/* ===================== FASE E — MOBILE (toque / pinch / nav) ===================== */
+
+/* o stage da árvore captura os gestos de toque (pan/pinch) sem rolar a página */
+.tree-stage {
+  touch-action: none;
+}
+
+@media (max-width: 640px) {
+  /* nav vira barra rolável horizontal (em vez de quebrar em várias linhas) */
+  .app-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .navbtn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* alvos de toque confortáveis (>=44px) nos interativos principais */
+  .navbtn {
+    min-height: 44px;
+  }
+  .slot {
+    min-height: 88px;
+  }
+  .orb-btn {
+    min-height: 56px;
+  }
+  .btn--sm {
+    min-height: 40px;
+  }
+  .fchip {
+    padding: 7px 12px;
+  }
+  .socket,
+  .pal-chip {
+    min-height: 40px;
+  }
+
+  /* toasts colados na base, largura cheia */
+  .toast {
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+}
+
+/* ===================== F3 — GALERIA DE COMPONENTES (dev) ===================== */
+
+.gallery {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4);
+}
+.gal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: center;
+}
+.gal-row .ic {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #000;
+  border-radius: var(--radius);
+  position: relative;
+}
+.gal-orb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  width: 56px;
+}
+.gal-tips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+.gal-tips .itip {
+  max-width: 280px;
 }

@@ -8,6 +8,7 @@ import { CharacterPage } from './pages/CharacterPage'
 import { CharacterSelectPage } from './pages/CharacterSelectPage'
 import { DungeonPage } from './pages/DungeonPage'
 import { EquipmentPage } from './pages/EquipmentPage'
+import { GalleryPage } from './pages/GalleryPage'
 import { MarketPage } from './pages/MarketPage'
 import { PortalPage } from './pages/PortalPage'
 import { SkillsPage } from './pages/SkillsPage'
@@ -19,6 +20,16 @@ import { Onboarding, hasSeenOnboarding } from './ui/Onboarding'
 
 export function App() {
   const session = useSession()
+
+  // Rota interna de dev: galeria de componentes (F3). Fora do fluxo de jogo.
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dev') === 'gallery') {
+    return (
+      <ItemTipProvider>
+        <div className="vignette" aria-hidden="true" />
+        <GalleryPage />
+      </ItemTipProvider>
+    )
+  }
 
   return (
     <ItemTipProvider>
@@ -44,6 +55,9 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#main-content">
+        Pular para o conteúdo
+      </a>
       <header className="app-top">
         <div className="brand">
           <span className="brand__mark">BuildsWar</span>
@@ -85,11 +99,12 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
         </div>
       </header>
 
-      <nav className="app-nav">
+      <nav className="app-nav" aria-label="Navegação principal">
         {NAV.map((n) => (
           <button
             key={n.id}
             className={`navbtn${n.id === page ? ' is-active' : ''}`}
+            aria-current={n.id === page ? 'page' : undefined}
             onClick={() => game.navigate(n.id as ViewId)}
           >
             {n.label}
@@ -98,7 +113,7 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
         ))}
       </nav>
 
-      <main className="app-main" id="main-content">
+      <main className="app-main" id="main-content" tabIndex={-1}>
         {page === 'portal' && <PortalPage game={game} hero={hero} />}
         {page === 'personagem' && <CharacterPage game={game} hero={hero} />}
         {page === 'habilidades' && <SkillsPage game={game} />}

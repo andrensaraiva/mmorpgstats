@@ -2,8 +2,8 @@
 
 - **Criado:** 01 de julho de 2026 · **Atualizado:** 02 de julho de 2026
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
-- **Status:** consolidação concluída (um só protótipo React na raiz) **e fase de Polish Visual & UX em andamento** — Fases A, B, C e **D concluídas**; **Fase E é o próximo alvo**. Ver o log granular em [POLISH_ROADMAP.md §10](./POLISH_ROADMAP.md).
-- **Último commit:** `7cc273a` (Fase C; a Fase D entra no commit desta sessão) — branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
+- **Status:** consolidação concluída (um só protótipo React na raiz) **e Polish Visual & UX concluído** — Fases **A–E entregues** + fundações **F1/F2/F3**. Resta só a **Fase F (arte/áudio)**, que depende de produção de assets. Próximo valor vem das **trilhas paralelas de produto** (motor determinístico, online/persistência, conteúdo). Ver o log granular em [POLISH_ROADMAP.md §10](./POLISH_ROADMAP.md).
+- **Último commit:** `f3c2d60` (Fase D; Fase E + F1 + F3 entram no commit desta sessão) — branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
 
 > Para o próximo assistente/sessão: leia este arquivo inteiro. Comece pela **§5 — Ponto de partida** (é onde a fase de Polish parou). O fluxo de trabalho do dono: **commite cada etapa, atualize os docs, push perto do fim da sessão** (typecheck+test+build verdes a cada passo).
 
@@ -32,6 +32,7 @@ Tudo vive no app React da raiz. Núcleo de jogo separado da UI, em `src/game/`:
 - **`src/game/engine.ts`** — **motor puro**: `aggregate` (deriva DPS/EHP/resistências de equipado + árvore + suportes), `craft` (orbes/corrupção, sempre gera nova instância → invalida o fingerprint), `fingerprint`, `estimateRange`, `dungeonOutcome`, utilidades da árvore. Aleatoriedade entra por um `Rng` (mulberry32 seedável).
 - **`src/game/store.ts`** — estado React (`useReducer` + seletores): inventário, equipado, alocação, soquetes, moedas, dungeon selecionada, `measured` (DPS medido) e `knownDps` (só quando o fingerprint bate).
 - **`src/ui/`** — `format.ts`, `atoms.tsx` (Panel, PageHead, PowerBar, **HeroBoard/HeroPortrait/PowerDetails/ResistRow**, ItemTooltip/ItemTooltipBody), **`icons.tsx`** (ItemIcon/OrbIcon SVG — Fase A), **`tooltip.tsx`** (tooltip flutuante acessível — Fase B), **`CountUp.tsx`** (contagem animada — Fase C), **`craftDiff.ts`** (diff puro de afixos antes×depois de um craft — Fase C), **`inventoryFilter.ts`** (filtro/busca/ordenação pura do baú — Fase D), **`Toasts.tsx`** (canal de toasts efêmeros — Fase D), **`Onboarding.tsx`** (tutorial de 1ª sessão — Fase D).
+- **`src/pages/GalleryPage.tsx`** — galeria de componentes (F3), aberta em `?dev=gallery` (fora do fluxo de jogo). **`src/styles/global.css`** ganhou os **tokens semânticos** (F1) no `:root`; o mapa está em [THEME.md](./THEME.md).
 - **`src/pages/`** — Portal (**hub de mundo vivo**: temporada, mecânica sazonal coletiva, eventos, feed ao vivo, pulso econômico, ladder), Personagem (**dashboard**: progressão, build atual real, loadouts, histórico, recordes, conquistas), Habilidades, Equipamento (manequim + inventário + crafting + **comparação equipado×candidato**), Árvore (zoom/pan), Masmorra (tentativa → revela DPS real), Mercado, e o shell de Auth/roster/criação.
 - **`src/App.tsx`** — shell (top bar, nav, footer) + `ItemTipProvider` (contexto do tooltip) e roteamento por estado.
 - **`src/styles/global.css`** — visual POE full-width portado do `prototype-claude/styles.css`.
@@ -78,15 +79,18 @@ O dono escolheu começar a virada pelo **Polish Visual & UX** ([POLISH_ROADMAP.m
 - ✅ **Fase B — comparação + tooltip acessível.** `ComparePanel` (delta equipado×candidato) e `src/ui/tooltip.tsx` (flutuante, hover+foco+toque, fixável, Esc/fora/×, sem cortar, aria).
 - ✅ **Fase C — microinterações (concluída).** Confirmação obrigatória do Vaal; momento "DPS real descoberto" (count-up); **realce do afixo alterado após craft** (`craftDiff.ts` + `lastCraft` no store); **feedback de craftar** (brilho/sheen do preview, pulso do orbe, moeda "−1" subindo); **feedback de equipar** (pulso de encaixe no slot via `lastEquip`); **transição estimativa→medido na PowerBar** (`PStat reveal`). Tudo sob `prefers-reduced-motion`.
 - ✅ **Fase D — inventário, filtros e onboarding (concluída).** Barra de **filtro/busca/ordenação** do baú (`inventoryFilter.ts` puro + `InventorySection`) com contadores e estados vazios; **toasts unificados** (`Toasts.tsx` + canal no store) para craft/sem-moedas/slot-inválido/DPS-descoberto; **onboarding** de 1ª sessão pulável (`Onboarding.tsx`, flag em localStorage, botão "?" reabre). Testes em `faseD.test.ts`.
+- ✅ **Fase E — acessibilidade & mobile (concluída).** **Teclado** na árvore (roving tabindex + setas + Enter/Espaço) e foco visível em soquetes/nav; **skip-link**; **ARIA** no minimapa/relatório/orbes/count-up; **mobile** (pinch-zoom + pan por toque na árvore, nav rolável, alvos ≥44px); **contraste** revisado (AA nos textos secundários/erro).
+- ✅ **Fundações — F1 (tokens semânticos + [THEME.md](./THEME.md)), F2 (contrato de assets `icon`, já existia), F3 (galeria `?dev=gallery`).**
+- ⏳ **Fase F — arte & áudio (aberta, assíncrona).** Depende de produção de assets; o contrato F2 já deixa a arte final entrar por dados, sem mexer em componente.
 
-### ▶ RETOMAR AQUI — Fase E (acessibilidade e mobile de verdade)
-As Fases C e D estão fechadas. Próximo alvo, na ordem do roadmap ([POLISH_ROADMAP.md §4 Fase E](./POLISH_ROADMAP.md)):
-1. **Teclado**: navegar e alocar nós da **árvore** (`TreePage`) e encaixar **soquetes** (`SkillsPage`) por teclado; foco visível consistente em todos os interativos (já há foco nos gatilhos de item/orbe/chips — falta árvore/soquetes/nav).
-2. **ARIA/leitor de tela**: rótulos no **minimapa** da tentativa (`DungeonPage.DungeonMinimap`, hoje `role="img"` genérico), nos orbes e no resultado da dungeon; conferir regiões/headings.
-3. **Mobile**: alvos de toque **≥44px** no manequim, **pinch-zoom** na árvore (hoje é roda/arraste), painéis de detalhe como **bottom-sheet**, nav com rolagem confortável.
-4. **Contraste** revisado (texto de raridade sobre fundo escuro; mirar AA onde possível).
+### ▶ RETOMAR AQUI — Polish concluído; escolher a próxima trilha de produto
+O Polish Visual & UX (Fases A–E + F1/F2/F3) está fechado. A única fase de polish restante é a **F (arte/áudio)**, que **não é código** — é produção de assets que entram pelo contrato F2 (id → arquivo) sem mexer em componente. Portanto o próximo valor de engenharia vem das **trilhas paralelas** abaixo. Sugestão de ordem (maior risco/retorno primeiro):
 
-Fundações ainda pendentes (podem entrar antes/junto): **F1** (tokens semânticos extraídos de `global.css`) e **F3** (galeria de componentes `?dev=gallery`).
+1. **M1 — motor multi-tipo** ([COMBAT_AND_ARCHETYPES](./COMBAT_AND_ARCHETYPES.md)): dano físico/fogo/frio/raio/caos + penetração/resistências por tipo. É o risco técnico central e destrava relatórios/rankings reais. A UI já está pronta para exibir (ResistRow, tipos de dano nas dungeons).
+2. **Persistência** ([abaixo](#trilhas-paralelas-depoisjunto-do-polish)): gravar runs no `store` + localStorage torna histórico/recordes/loadouts do dashboard reais (hoje demonstrativos).
+3. **S1+ — modelo de item rico** ([EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)): qualidade, evasão/ES, requisitos, novos afixos.
+
+Notas para quem pegar o polish de novo: a **galeria** (`?dev=gallery`) é o lugar de conferir/adicionar átomos; o **manifesto de tema** ([THEME.md](./THEME.md)) rege os tokens — componentes novos consomem tokens, e a migração do CSS legado é incremental (troque valores por tokens ao tocar num bloco).
 
 ### Trilhas paralelas (depois/junto do polish)
 - **S1+ (conteúdo/item)** — modelo de item rico (qualidade, defesas evasão/ES, requisitos, novos afixos): [EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md).

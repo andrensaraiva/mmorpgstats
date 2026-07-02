@@ -19,10 +19,12 @@ export function CountUp({
   to,
   duration = 1000,
   className,
+  'aria-hidden': ariaHidden,
 }: {
   to: number
   duration?: number
   className?: string
+  'aria-hidden'?: boolean
 }) {
   const [val, setVal] = useState(() => (reduceMotion() ? to : 0))
   const raf = useRef<number | undefined>(undefined)
@@ -45,5 +47,9 @@ export function CountUp({
     }
   }, [to, duration])
 
-  return <span className={className}>{fmtInt(val)}</span>
+  return (
+    <span className={className} aria-hidden={ariaHidden}>
+      {fmtInt(val)}
+    </span>
+  )
 }

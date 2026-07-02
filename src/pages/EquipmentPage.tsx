@@ -323,6 +323,7 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
                   className={`orb-btn${orb.id === 'vaal' ? ' orb-btn--vaal' : ''}${justUsed ? ' orb-btn--used' : ''}`}
                   disabled={!usable}
                   title={orb.description}
+                  aria-label={`${orb.name}: ${orb.description}. ${count} em estoque.`}
                   onClick={() => {
                     if (orb.id === 'vaal') {
                       setConfirmVaal(true)

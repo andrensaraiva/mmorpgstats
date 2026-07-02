@@ -14,11 +14,42 @@ interface Transform {
   ty: number
 }
 
+/**
+ * Dado um nó e uma direção de seta, acha o vizinho conectado "mais alinhado"
+ * com essa direção (para mover o foco por teclado na árvore).
+ */
+function neighborInDirection(fromId: string, key: string): string | null {
+  const from = TREE.nodes.find((n) => n.id === fromId)
+  if (!from) return null
+  const dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[key]
+  if (!dir) return null
+  let best: string | null = null
+  let bestScore = -Infinity
+  for (const nbId of adjacency[fromId] ?? []) {
+    const nb = TREE.nodes.find((n) => n.id === nbId)
+    if (!nb) continue
+    const dx = nb.x - from.x
+    const dy = nb.y - from.y
+    const len = Math.hypot(dx, dy) || 1
+    // Projeção na direção da seta, penalizando o desvio lateral.
+    const along = (dx * dir[0] + dy * dir[1]) / len
+    if (along <= 0.2) continue // não está minimamente naquela direção
+    if (along > bestScore) {
+      bestScore = along
+      best = nbId
+    }
+  }
+  return best
+}
+
 export function TreePage({ game }: { game: Game }) {
   const { allocated } = game.state
   const [t, setT] = useState<Transform>({ scale: 1, tx: 0, ty: 0 })
   const [detail, setDetail] = useState<string | null>(null)
+  // Roving tabindex: qual nó recebe o Tab (ponto de entrada da navegação).
+  const [focusId, setFocusId] = useState<string>('s0')
   const stageRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
   const drag = useRef({ active: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
 
   const used = allocated.size - 1
@@ -58,6 +89,55 @@ export function TreePage({ game }: { game: Game }) {
     }
   }, [])
 
+  // Toque: 1 dedo faz pan, 2 dedos fazem pinch-zoom (mobile — Fase E).
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    let lastDist = 0
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        lastDist = dist(e.touches)
+      } else if (e.touches.length === 1) {
+        drag.current = {
+          active: true,
+          moved: false,
+          sx: e.touches[0].clientX,
+          sy: e.touches[0].clientY,
+          ox: t.tx,
+          oy: t.ty,
+        }
+      }
+    }
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault()
+        const d = dist(e.touches)
+        if (lastDist > 0) zoom(d / lastDist)
+        lastDist = d
+      } else if (e.touches.length === 1 && drag.current.active) {
+        const dx = e.touches[0].clientX - drag.current.sx
+        const dy = e.touches[0].clientY - drag.current.sy
+        if (Math.abs(dx) + Math.abs(dy) > 4) drag.current.moved = true
+        setT((prev) => ({ ...prev, tx: drag.current.ox + dx, ty: drag.current.oy + dy }))
+      }
+    }
+    const onEnd = () => {
+      drag.current.active = false
+      lastDist = 0
+    }
+    stage.addEventListener('touchstart', onStart, { passive: false })
+    stage.addEventListener('touchmove', onMove, { passive: false })
+    stage.addEventListener('touchend', onEnd)
+    return () => {
+      stage.removeEventListener('touchstart', onStart)
+      stage.removeEventListener('touchmove', onMove)
+      stage.removeEventListener('touchend', onEnd)
+    }
+    // t.tx/t.ty são lidos no início do gesto; zoom é estável (useCallback).
+  }, [zoom, t.tx, t.ty])
+
   const onDown = (e: React.MouseEvent) => {
     drag.current = { active: true, moved: false, sx: e.clientX, sy: e.clientY, ox: t.tx, oy: t.ty }
     stageRef.current?.classList.add('grabbing')
@@ -67,6 +147,28 @@ export function TreePage({ game }: { game: Game }) {
     if (drag.current.moved) return
     game.toggleNode(id)
     setDetail(id)
+  }
+
+  // Move o foco de teclado para outro nó e o rola/foca no DOM.
+  const moveFocus = useCallback((id: string) => {
+    setFocusId(id)
+    setDetail(id)
+    const el = svgRef.current?.querySelector<SVGGElement>(`[data-node="${id}"]`)
+    el?.focus()
+  }, [])
+
+  const onNodeKeyDown = (e: React.KeyboardEvent, id: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      game.toggleNode(id)
+      setDetail(id)
+      return
+    }
+    const next = neighborInDirection(id, e.key)
+    if (next) {
+      e.preventDefault()
+      moveFocus(next)
+    }
   }
 
   const detailNode = detail ? TREE.nodes.find((n) => n.id === detail) ?? null : null
@@ -106,7 +208,14 @@ export function TreePage({ game }: { game: Game }) {
           </div>
 
           <div className="tree-stage" ref={stageRef} onMouseDown={onDown}>
-            <svg className="tree-svg" viewBox="0 0 860 470" preserveAspectRatio="xMidYMid meet">
+            <svg
+              className="tree-svg"
+              ref={svgRef}
+              viewBox="0 0 860 470"
+              preserveAspectRatio="xMidYMid meet"
+              role="group"
+              aria-label={`Árvore passiva — ${used} de ${TREE.maxPoints} pontos alocados. Use Tab para focar um nó, setas para navegar, Enter para alocar ou reembolsar.`}
+            >
               <defs>
                 <linearGradient id="goldgrad" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0" stopColor="#f0d288" />
@@ -139,8 +248,11 @@ export function TreePage({ game }: { game: Game }) {
                       (adjacency[n.id] ?? []).some((nb) => allocated.has(nb)) &&
                       used < TREE.maxPoints
                     }
+                    isFocus={n.id === focusId}
                     onEnter={() => setDetail(n.id)}
                     onClick={() => clickNode(n.id)}
+                    onFocus={() => setFocusId(n.id)}
+                    onKeyDown={(e) => onNodeKeyDown(e, n.id)}
                   />
                 ))}
               </g>
@@ -187,14 +299,20 @@ function TreeNodeShape({
   node,
   isAlloc,
   canAlloc,
+  isFocus,
   onEnter,
   onClick,
+  onFocus,
+  onKeyDown,
 }: {
   node: TreeNode
   isAlloc: boolean
   canAlloc: boolean
+  isFocus: boolean
   onEnter: () => void
   onClick: () => void
+  onFocus: () => void
+  onKeyDown: (e: React.KeyboardEvent) => void
 }) {
   const cls = ['tnode', `${node.path}-path`]
   if (node.type === 'notable') cls.push('notable')
@@ -206,8 +324,23 @@ function TreeNodeShape({
   const labelY = node.y + (node.type === 'keystone' || node.type === 'notable' ? 34 : 27)
   const gsize = node.type === 'notable' ? 14 : node.type === 'keystone' ? 13 : 11
 
+  const state = isAlloc ? 'alocado' : canAlloc ? 'alocável' : 'bloqueado'
+
   return (
-    <g className={cls.join(' ')} onMouseEnter={onEnter} onClick={onClick}>
+    <g
+      className={cls.join(' ')}
+      data-node={node.id}
+      role="button"
+      aria-label={`${node.name}: ${node.stat}. ${state}.`}
+      aria-pressed={isAlloc}
+      // Roving tabindex: só o nó "em foco" entra na ordem de Tab (começa na
+      // origem s0). Setas movem o foco; os demais ficam com tabIndex -1.
+      tabIndex={isFocus ? 0 : -1}
+      onMouseEnter={onEnter}
+      onClick={onClick}
+      onFocus={onFocus}
+      onKeyDown={onKeyDown}
+    >
       {node.type === 'keystone' ? (
         <rect
           className="kd"
