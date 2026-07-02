@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { ORBS, getBase } from '../game/content'
 import { aggregate, canCraft } from '../game/engine'
 import { itemByUid, selectEquippedItems } from '../game/store'
-import type { Game } from '../game/store'
+import type { Game, LastCraft } from '../game/store'
 import type { EquipSlot, ItemInstance, OrbId } from '../game/types'
 import { RARITY_LABEL, fmtInt, rarClass } from '../ui/format'
 import { ItemTooltipBody, PageHead, Panel, PowerBar } from '../ui/atoms'
 import { ItemIcon, OrbIcon } from '../ui/icons'
 import { tipProps, useItemTip } from '../ui/tooltip'
+import { diffAffixes } from '../ui/craftDiff'
 
 const DOLL: EquipSlot[][] = [
   ['weapon', 'head', 'offhand'],
@@ -60,10 +61,13 @@ export function EquipmentPage({ game }: { game: Game }) {
                       )
                     }
                     const isSel = item.uid === state.selectedItemUid
+                    const justEquipped = state.lastEquip?.slot === slot
                     return (
                       <button
-                        className={`slot ${rarClass(item.rarity)} b-${item.rarity}${isSel ? ' is-sel' : ''}`}
-                        key={slot}
+                        className={`slot ${rarClass(item.rarity)} b-${item.rarity}${isSel ? ' is-sel' : ''}${
+                          justEquipped ? ' just-equipped' : ''
+                        }`}
+                        key={justEquipped ? `${slot}-${state.lastEquip!.seq}` : slot}
                         aria-label={`${SLOT_LABEL[slot]}: ${item.name}`}
                         onClick={() => game.selectItem(item.uid)}
                         {...tipProps(tip, <ItemTooltipBody item={item} />)}
@@ -145,11 +149,18 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
   // Cancela a confirmação pendente ao trocar de item selecionado.
   useEffect(() => setConfirmVaal(false), [selected?.uid])
 
+  // Realce do craft: só vale enquanto o item craftado continua selecionado.
+  const lastCraft = game.state.lastCraft
+  const craft: LastCraft | null = lastCraft && selected && lastCraft.uid === selected.uid ? lastCraft : null
+
   return (
     <Panel title="Bancada de Crafting">
       {selected ? (
         <>
-          <div className={`craft-preview ${rarClass(selected.rarity)}`}>
+          <div
+            className={`craft-preview ${rarClass(selected.rarity)}${craft ? ' just-crafted' : ''}`}
+            key={craft ? craft.seq : selected.uid}
+          >
             <div className="craft-preview__icon">
               <ItemIcon baseId={selected.baseId} />
             </div>
@@ -160,17 +171,19 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
                 {selected.corrupted ? ' · CORROMPIDO' : ''}
               </div>
             </div>
+            {craft ? <span className="craft-flash" aria-hidden="true" /> : null}
           </div>
-          <ItemModList item={selected} />
+          <ItemModList item={selected} craft={craft} />
           <ComparePanel game={game} item={selected} />
           <div className="orb-grid">
             {ORBS.map((orb) => {
               const count = game.state.currency[orb.id]
               const usable = count > 0 && canCraft(orb.id, selected)
+              const justUsed = craft?.orb === orb.id
               return (
                 <button
                   key={orb.id}
-                  className={`orb-btn${orb.id === 'vaal' ? ' orb-btn--vaal' : ''}`}
+                  className={`orb-btn${orb.id === 'vaal' ? ' orb-btn--vaal' : ''}${justUsed ? ' orb-btn--used' : ''}`}
                   disabled={!usable}
                   title={orb.description}
                   onClick={() => {
@@ -183,7 +196,7 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
                 >
                   <OrbIcon id={orb.id as OrbId} />
                   <span className="orb-name">{orb.short}</span>
-                  <span className="orb-count">{count}</span>
+                  <CraftCount value={count} spend={justUsed} />
                 </button>
               )
             })}
@@ -225,22 +238,56 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
   )
 }
 
-function ItemModList({ item }: { item: ItemInstance }) {
+/**
+ * Contador de orbe que, ao gastar, mostra um "−1" flutuante subindo — o feedback
+ * de "moedas decrementando" da Fase C. Respeita prefers-reduced-motion via CSS
+ * (a animação global é neutralizada; o número novo aparece direto).
+ */
+function CraftCount({ value, spend }: { value: number; spend: boolean }) {
+  return (
+    <span className="orb-count">
+      {value}
+      {spend ? (
+        <span className="orb-spend" aria-hidden="true">
+          −1
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
+function ItemModList({ item, craft }: { item: ItemInstance; craft?: LastCraft | null }) {
   const base = getBase(item.baseId)
+  // Diff pós-craft: anota novo/alterado por afixo e lista removidos.
+  const diff = craft ? diffAffixes(craft.before, item) : null
+  const changeLabel: Record<string, string> = { new: 'novo', changed: 'alterado', same: '' }
+
   return (
     <div className="craft-mods">
       {base.implicitText ? <div className="it-impl">{base.implicitText}</div> : null}
-      {item.affixes.map((a, i) =>
-        item.rarity === 'unique' ? (
-          <div className="it-uniq" key={i}>
-            {a.text}
-          </div>
-        ) : (
-          <div className="it-aff" key={i}>
+      {item.affixes.map((a, i) => {
+        const change = diff?.entries[i]?.change ?? 'same'
+        const flag = change === 'new' || change === 'changed' ? change : ''
+        if (item.rarity === 'unique') {
+          return (
+            <div className={`it-uniq${flag ? ` aff-${flag}` : ''}`} key={i}>
+              {a.text}
+            </div>
+          )
+        }
+        return (
+          <div className={`it-aff${flag ? ` aff-${flag}` : ''}`} key={i}>
             <span className="t">{a.kind === 'prefix' ? 'P' : 'S'}·T{a.tier}</span> {a.text}
+            {flag ? <span className={`aff-badge aff-badge--${flag}`}>{changeLabel[change]}</span> : null}
           </div>
-        ),
-      )}
+        )
+      })}
+      {diff?.removed.map((a, i) => (
+        <div className="it-aff aff-removed" key={`rm-${i}`}>
+          <span className="t">{a.kind === 'prefix' ? 'P' : 'S'}·T{a.tier}</span> {a.text}
+          <span className="aff-badge aff-badge--removed">removido</span>
+        </div>
+      ))}
       {item.affixes.length === 0 && !base.implicitText ? <div className="tiny muted">sem modificadores</div> : null}
     </div>
   )

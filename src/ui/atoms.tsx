@@ -39,9 +39,22 @@ export function PageHead({ title, crumb }: { title: string; crumb: string }) {
 
 /* ---------- leitura de poder ---------- */
 
-function PStat({ k, cls, v, sub }: { k: string; cls?: string; v: ReactNode; sub: string }) {
+function PStat({
+  k,
+  cls,
+  v,
+  sub,
+  reveal,
+}: {
+  k: string
+  cls?: string
+  v: ReactNode
+  sub: string
+  /** Marca a troca estimativa→medido para animar a entrada do número real. */
+  reveal?: boolean
+}) {
   return (
-    <div className="pstat">
+    <div className={`pstat${reveal ? ' pstat--reveal' : ''}`}>
       <div className="pk">{k}</div>
       <div className={`pv ${cls ?? ''}`}>{v}</div>
       <div className="psub">{sub}</div>
@@ -52,6 +65,8 @@ function PStat({ k, cls, v, sub }: { k: string; cls?: string; v: ReactNode; sub:
 /**
  * Números descobertos: o DPS real só aparece quando `knownDps` (medido para o
  * fingerprint atual) existe; antes disso mostramos uma estimativa em faixa.
+ * A troca estimativa→medido entra com uma transição suave (`.pstat--reveal`),
+ * neutralizada por prefers-reduced-motion no CSS global.
  */
 export function PowerBar({ power, knownDps }: { power: Power; knownDps: number | null }) {
   const fireWarn = power.fireRes < 45
@@ -59,9 +74,22 @@ export function PowerBar({ power, knownDps }: { power: Power; knownDps: number |
   return (
     <div className="powerbar">
       {knownDps != null ? (
-        <PStat k="DPS (medido)" cls="dmg" v={fmtInt(knownDps)} sub="testado em dungeon" />
+        <PStat
+          key="dps-measured"
+          k="DPS (medido)"
+          cls="dmg"
+          v={fmtInt(knownDps)}
+          sub="testado em dungeon"
+          reveal
+        />
       ) : (
-        <PStat k="DPS (estimado)" cls="dmg est" v={`≈ ${fmtInt(lo)}–${fmtInt(hi)}`} sub="teste numa dungeon p/ o real" />
+        <PStat
+          key="dps-estimated"
+          k="DPS (estimado)"
+          cls="dmg est"
+          v={`≈ ${fmtInt(lo)}–${fmtInt(hi)}`}
+          sub="teste numa dungeon p/ o real"
+        />
       )}
       <PStat k="Vida efetiva" cls="def" v={fmtInt(power.ehp)} sub="sobrevivência" />
       <PStat

@@ -3541,3 +3541,219 @@ a {
   color: var(--text-dim);
   font-size: 0.68rem;
 }
+
+/* ===================== FASE C — microinterações (equipar / craftar / revelar) ===================== */
+
+/* --- realce do afixo alterado após um craft --- */
+.it-aff.aff-new,
+.it-uniq.aff-new {
+  color: #8fe0d4;
+  animation: aff-pop 1.1s ease-out;
+}
+.it-aff.aff-changed,
+.it-uniq.aff-changed {
+  color: var(--gold-hi);
+  animation: aff-pop 1.1s ease-out;
+}
+.it-aff.aff-removed {
+  color: var(--text-mut);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* selo curtinho "novo/alterado/removido" ao lado do mod diffado */
+.aff-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.aff-badge--new {
+  color: #071a17;
+  background: var(--teal-hi);
+}
+.aff-badge--changed {
+  color: #1a1405;
+  background: var(--gold-hi);
+}
+.aff-badge--removed {
+  color: #e6d6c0;
+  background: rgb(139 26 26 / 55%);
+}
+
+@keyframes aff-pop {
+  0% {
+    transform: translateX(-4px);
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* --- brilho do item recém-craftado (preview) --- */
+.craft-preview.just-crafted {
+  animation: craft-glow 1.2s ease-out;
+}
+.craft-preview {
+  position: relative;
+  overflow: hidden;
+}
+.craft-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgb(236 208 133 / 45%) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: craft-sheen 1s ease-out;
+}
+
+@keyframes craft-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgb(236 208 133 / 0%);
+  }
+  25% {
+    box-shadow: 0 0 16px 2px rgb(236 208 133 / 55%);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(236 208 133 / 0%);
+  }
+}
+
+@keyframes craft-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* --- orbe usado pulsa e a moeda "cai" (−1 subindo) --- */
+.orb-btn--used {
+  border-color: var(--gold-hi);
+  animation: orb-used 0.9s ease-out;
+}
+.orb-btn--used .orb-icon {
+  animation: orb-icon-pulse 0.9s ease-out;
+}
+
+@keyframes orb-used {
+  0% {
+    box-shadow: 0 0 0 0 rgb(236 208 133 / 0%);
+    background: linear-gradient(180deg, #3a2f18, #201810);
+  }
+  100% {
+    box-shadow: 0 0 12px 1px rgb(236 208 133 / 0%);
+  }
+}
+@keyframes orb-icon-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.28);
+    filter: drop-shadow(0 0 8px rgb(236 208 133 / 90%));
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.orb-count {
+  position: relative;
+}
+.orb-spend {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  color: var(--blood-hi);
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 0.72rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: coin-spend 0.95s ease-out forwards;
+}
+
+@keyframes coin-spend {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -16px);
+  }
+}
+
+/* --- pulso de encaixe ao equipar um slot --- */
+.slot.just-equipped {
+  animation: equip-snap 0.7s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.slot.just-equipped .slot__icon {
+  animation: equip-glow 0.9s ease-out;
+}
+
+@keyframes equip-snap {
+  0% {
+    transform: scale(0.92);
+  }
+  55% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes equip-glow {
+  0% {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 40%), 0 0 0 0 rgb(143 224 212 / 0%);
+  }
+  40% {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 40%), 0 0 14px 2px rgb(143 224 212 / 70%);
+  }
+  100% {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 40%), 0 0 0 0 rgb(143 224 212 / 0%);
+  }
+}
+
+/* --- transição estimativa→medido na PowerBar --- */
+.pstat--reveal {
+  animation: pstat-reveal 0.85s ease-out;
+}
+.pstat--reveal .pv {
+  animation: pstat-val-in 0.85s ease-out;
+}
+
+@keyframes pstat-reveal {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 154 90 / 0%);
+  }
+  35% {
+    box-shadow: 0 0 16px 1px rgb(255 154 90 / 45%);
+    border-color: rgb(255 154 90 / 60%);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 154 90 / 0%);
+  }
+}
+@keyframes pstat-val-in {
+  0% {
+    opacity: 0.2;
+    transform: translateY(4px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

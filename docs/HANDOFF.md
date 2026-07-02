@@ -2,8 +2,8 @@
 
 - **Criado:** 01 de julho de 2026 · **Atualizado:** 02 de julho de 2026
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
-- **Status:** consolidação concluída (um só protótipo React na raiz) **e fase de Polish Visual & UX em andamento** — Fases A e B concluídas, Fase C em andamento. Ver o log granular em [POLISH_ROADMAP.md §10](./POLISH_ROADMAP.md).
-- **Último commit:** `86aec8a` (branch `main`, origin = github.com/andrensaraiva/mmorpgstats).
+- **Status:** consolidação concluída (um só protótipo React na raiz) **e fase de Polish Visual & UX em andamento** — Fases A, B e **C concluídas**; **Fase D é o próximo alvo**. Ver o log granular em [POLISH_ROADMAP.md §10](./POLISH_ROADMAP.md).
+- **Último commit:** `1bd9769` (branch `main`, origin = github.com/andrensaraiva/mmorpgstats).
 
 > Para o próximo assistente/sessão: leia este arquivo inteiro. Comece pela **§5 — Ponto de partida** (é onde a fase de Polish parou). O fluxo de trabalho do dono: **commite cada etapa, atualize os docs, push perto do fim da sessão** (typecheck+test+build verdes a cada passo).
 
@@ -31,7 +31,7 @@ Tudo vive no app React da raiz. Núcleo de jogo separado da UI, em `src/game/`:
 - **`src/game/content.ts`** — dados: bases de item, pool de afixos com tiers/faixas, orbes, habilidades + suportes, árvore (nós/arestas), dungeons, mercado, únicos e o inventário/equipamento iniciais.
 - **`src/game/engine.ts`** — **motor puro**: `aggregate` (deriva DPS/EHP/resistências de equipado + árvore + suportes), `craft` (orbes/corrupção, sempre gera nova instância → invalida o fingerprint), `fingerprint`, `estimateRange`, `dungeonOutcome`, utilidades da árvore. Aleatoriedade entra por um `Rng` (mulberry32 seedável).
 - **`src/game/store.ts`** — estado React (`useReducer` + seletores): inventário, equipado, alocação, soquetes, moedas, dungeon selecionada, `measured` (DPS medido) e `knownDps` (só quando o fingerprint bate).
-- **`src/ui/`** — `format.ts`, `atoms.tsx` (Panel, PageHead, PowerBar, **HeroBoard/HeroPortrait/PowerDetails/ResistRow**, ItemTooltip/ItemTooltipBody), **`icons.tsx`** (ItemIcon/OrbIcon SVG — Fase A), **`tooltip.tsx`** (tooltip flutuante acessível — Fase B), **`CountUp.tsx`** (contagem animada — Fase C).
+- **`src/ui/`** — `format.ts`, `atoms.tsx` (Panel, PageHead, PowerBar, **HeroBoard/HeroPortrait/PowerDetails/ResistRow**, ItemTooltip/ItemTooltipBody), **`icons.tsx`** (ItemIcon/OrbIcon SVG — Fase A), **`tooltip.tsx`** (tooltip flutuante acessível — Fase B), **`CountUp.tsx`** (contagem animada — Fase C), **`craftDiff.ts`** (diff puro de afixos antes×depois de um craft — Fase C).
 - **`src/pages/`** — Portal (**hub de mundo vivo**: temporada, mecânica sazonal coletiva, eventos, feed ao vivo, pulso econômico, ladder), Personagem (**dashboard**: progressão, build atual real, loadouts, histórico, recordes, conquistas), Habilidades, Equipamento (manequim + inventário + crafting + **comparação equipado×candidato**), Árvore (zoom/pan), Masmorra (tentativa → revela DPS real), Mercado, e o shell de Auth/roster/criação.
 - **`src/App.tsx`** — shell (top bar, nav, footer) + `ItemTipProvider` (contexto do tooltip) e roteamento por estado.
 - **`src/styles/global.css`** — visual POE full-width portado do `prototype-claude/styles.css`.
@@ -76,14 +76,15 @@ O dono escolheu começar a virada pelo **Polish Visual & UX** ([POLISH_ROADMAP.m
 
 - ✅ **Fase A — ícones & molduras.** `src/ui/icons.tsx` (ItemIcon/OrbIcon SVG), contrato `icon` nas bases (F2), glow de raridade, selo de corrompido. Fim dos placeholders de letra.
 - ✅ **Fase B — comparação + tooltip acessível.** `ComparePanel` (delta equipado×candidato) e `src/ui/tooltip.tsx` (flutuante, hover+foco+toque, fixável, Esc/fora/×, sem cortar, aria).
-- 🔶 **Fase C — microinterações (em andamento).** Feito: **confirmação obrigatória do Vaal** e o **momento "DPS real descoberto"** (count-up animado, `src/ui/CountUp.tsx`, respeita `prefers-reduced-motion`).
+- ✅ **Fase C — microinterações (concluída).** Confirmação obrigatória do Vaal; momento "DPS real descoberto" (count-up); **realce do afixo alterado após craft** (`craftDiff.ts` + `lastCraft` no store); **feedback de craftar** (brilho/sheen do preview, pulso do orbe, moeda "−1" subindo); **feedback de equipar** (pulso de encaixe no slot via `lastEquip`); **transição estimativa→medido na PowerBar** (`PStat reveal`). Tudo sob `prefers-reduced-motion`.
 
-### ▶ RETOMAR AQUI — resto da Fase C
-No relatório da dungeon / bancada:
-1. **Feedback de equipar/craftar**: brilho/pulso ao equipar; ao craftar, brilho do orbe e **moedas decrementando** visivelmente.
-2. **Transição estimativa↔real na PowerBar** (suave quando o DPS passa de estimado para medido).
-3. **Realce do afixo alterado após um craft** (novo/alterado/removido — precisa diffar o item antigo vs. o novo no `applyCraft`/`replaceItem`).
-Tudo sob `prefers-reduced-motion`. Depois: **Fase D** (filtros de inventário + onboarding + toasts), **Fase E** (a11y/teclado/mobile). Fundações ainda pendentes: **F1** (tokens semânticos) e **F3** (galeria de componentes).
+### ▶ RETOMAR AQUI — Fase D (inventário, filtros e onboarding)
+A Fase C está fechada. Próximo alvo, na ordem do roadmap ([POLISH_ROADMAP.md §4 Fase D](./POLISH_ROADMAP.md)):
+1. **Ferramentas de inventário** em `EquipmentPage`: filtro por tipo-base e raridade, busca por afixo, ordenação; contadores; estados vazios bem escritos. (Hoje `state.inventory` é renderizado direto em `.inv-grid` sem filtro.)
+2. **Onboarding de primeira sessão**: sequência curta e pulável ensinando o loop montar → testar → ajustar e a mecânica de números descobertos; dicas contextuais nos primeiros hovers.
+3. **Toasts/notice unificados**: hoje `state.notice` é texto solto (na bancada e via `dispatch({type:'notice'})`). Unificar num componente de toast ("item mágico!", "sem moedas", "DPS descoberto").
+
+Depois: **Fase E** (a11y/teclado/mobile). Fundações ainda pendentes: **F1** (tokens semânticos extraídos de `global.css`) e **F3** (galeria de componentes `?dev=gallery`).
 
 ### Trilhas paralelas (depois/junto do polish)
 - **S1+ (conteúdo/item)** — modelo de item rico (qualidade, defesas evasão/ES, requisitos, novos afixos): [EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md).

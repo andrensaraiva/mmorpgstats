@@ -50,6 +50,20 @@ export interface AttemptResult {
   breakingType?: DamageType
 }
 
+/**
+ * Registro do último craft, para a UI diffar os afixos (novo/alterado/removido)
+ * e disparar o brilho do item alterado. `orb` também dá o realce do orbe usado.
+ */
+export interface LastCraft {
+  /** uid da nova instância gerada — a que agora está no inventário. */
+  uid: string
+  orb: OrbId
+  /** Afixos do item ANTES do craft, para o diff visual. */
+  before: ItemInstance
+  /** Selo de unicidade: some ao selecionar outro item ou craftar de novo. */
+  seq: number
+}
+
 export interface GameState {
   page: ViewId
   inventory: ItemInstance[]
@@ -63,6 +77,10 @@ export interface GameState {
   attemptPhase: AttemptPhase
   attemptResult: AttemptResult | null
   notice: string | null
+  /** Último craft aplicado — dirige o realce do diff/orbe (Fase C). */
+  lastCraft: LastCraft | null
+  /** Último equipar — dirige o pulso de encaixe no slot (Fase C). */
+  lastEquip: { slot: EquipSlot; seq: number } | null
 }
 
 function initState(): GameState {
@@ -80,8 +98,13 @@ function initState(): GameState {
     attemptPhase: 'idle',
     attemptResult: null,
     notice: null,
+    lastCraft: null,
+    lastEquip: null,
   }
 }
+
+let craftSeq = 0
+let equipSeq = 0
 
 type Action =
   | { type: 'navigate'; page: ViewId }
@@ -91,7 +114,7 @@ type Action =
   | { type: 'toggleNode'; nodeId: string }
   | { type: 'resetTree' }
   | { type: 'toggleSocket'; skillId: string; supportId: string }
-  | { type: 'replaceItem'; oldUid: string; item: ItemInstance; orb: OrbId; notice: string }
+  | { type: 'replaceItem'; before: ItemInstance; item: ItemInstance; orb: OrbId; notice: string }
   | { type: 'selectDungeon'; id: string }
   | { type: 'attemptRun' }
   | { type: 'attemptFinish'; result: AttemptResult; measured: Measured | null }
@@ -110,7 +133,8 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, page: action.page, notice: null }
 
     case 'selectItem':
-      return { ...state, selectedItemUid: action.uid }
+      // Trocar de item apaga o realce do craft anterior (só o item recém-craftado brilha).
+      return { ...state, selectedItemUid: action.uid, lastCraft: null }
 
     case 'equip': {
       const equipped = { ...state.equipped }
@@ -119,7 +143,7 @@ function reducer(state: GameState, action: Action): GameState {
         if (equipped[s] === action.uid) delete equipped[s]
       }
       equipped[action.slot] = action.uid
-      return { ...state, equipped, notice: null }
+      return { ...state, equipped, notice: null, lastEquip: { slot: action.slot, seq: ++equipSeq } }
     }
 
     case 'unequip': {
@@ -167,10 +191,11 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case 'replaceItem': {
-      const inventory = state.inventory.map((i) => (i.uid === action.oldUid ? action.item : i))
+      const oldUid = action.before.uid
+      const inventory = state.inventory.map((i) => (i.uid === oldUid ? action.item : i))
       const equipped = { ...state.equipped }
       for (const s of Object.keys(equipped) as EquipSlot[]) {
-        if (equipped[s] === action.oldUid) equipped[s] = action.item.uid
+        if (equipped[s] === oldUid) equipped[s] = action.item.uid
       }
       const currency = { ...state.currency, [action.orb]: state.currency[action.orb] - 1 }
       return {
@@ -180,6 +205,7 @@ function reducer(state: GameState, action: Action): GameState {
         currency,
         selectedItemUid: action.item.uid,
         notice: action.notice,
+        lastCraft: { uid: action.item.uid, orb: action.orb, before: action.before, seq: ++craftSeq },
       }
     }
 
@@ -309,7 +335,7 @@ export function useGame() {
         dispatch({ type: 'notice', message: result.message })
         return
       }
-      dispatch({ type: 'replaceItem', oldUid: item.uid, item: result.item, orb, notice: result.message })
+      dispatch({ type: 'replaceItem', before: item, item: result.item, orb, notice: result.message })
     },
     [state],
   )
