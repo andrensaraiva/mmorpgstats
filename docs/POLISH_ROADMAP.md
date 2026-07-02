@@ -176,4 +176,5 @@ A UI polida nesta fase foi desenhada para receber essas trilhas sem retrabalho: 
   - **Fase B concluída.** Pendente menor: realce do afixo alterado após craft (encaixa na Fase C).
 - **02/07/2026 — Fase C iniciada.**
   - **Confirmação obrigatória do Vaal** (corrupção irreversível): clicar no Orbe Vaal abre um `alertdialog` inline pedindo confirmação (Corromper / Cancelar), em vez de disparar direto. Reseta ao trocar de item.
-  - **Próximo na Fase C:** count-up animado do DPS ao ser revelado na dungeon (floreio "DESCOBERTO"), feedback de equipar/craftar (fumaça/brilho do orbe, moedas decrementando), realce do afixo alterado após craft — tudo sob `prefers-reduced-motion`.
+  - **Momento "número descoberto"**: `src/ui/CountUp.tsx` (easeOutCubic, respeita `prefers-reduced-motion`) + bloco **"◈ DPS real descoberto ◈"** no relatório da dungeon, com o número contando de 0 até o medido e um floreio de entrada. Também trocado o ícone de letra do loot do relatório pelo SVG (limpeza da Fase A).
+  - **Próximo na Fase C:** feedback de equipar/craftar (brilho do orbe, moedas decrementando), transição estimativa↔real na PowerBar, realce do afixo alterado após craft — tudo sob `prefers-reduced-motion`.

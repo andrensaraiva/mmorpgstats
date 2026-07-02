@@ -13,6 +13,8 @@ import type {
 } from '../game/types'
 import { fmtInt, fmtTime, rarClass } from '../ui/format'
 import { PageHead, Panel, PowerBar } from '../ui/atoms'
+import { ItemIcon } from '../ui/icons'
+import { CountUp } from '../ui/CountUp'
 
 const TYPE_LABEL: Record<DamageType, string> = {
   phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
@@ -246,8 +248,13 @@ function Report({ game }: { game: Game }) {
       </div>
       <div className="report__cause">
         {r.win
-          ? `Concluído em ${fmtTime(dur)}. ${r.cause} O DPS real medido foi ${fmtInt(r.dps)}.`
-          : `${r.cause} Ainda assim, o DPS real foi medido: ${fmtInt(r.dps)}.`}
+          ? `Concluído em ${fmtTime(dur)}. ${r.cause}`
+          : `${r.cause} Ainda assim, o combate mediu o seu dano real.`}
+      </div>
+      <div className="discovery">
+        <span className="discovery__tag">◈ DPS real descoberto ◈</span>
+        <CountUp to={r.dps} className="discovery__val" />
+        <span className="discovery__sub">medido em combate · válido só para esta build exata</span>
       </div>
       <div className="report__grid">
         <div className="report__col">
@@ -280,7 +287,9 @@ function Report({ game }: { game: Game }) {
             <>
               <div className="eyebrow mt10 mb6">Loot obtido</div>
               <div className={`loot-row ${rarClass(dungeon.reward.rarity)}`}>
-                <div className={`ic ${rarClass(dungeon.reward.rarity)}`}>{rewardBase.name.charAt(0)}</div>
+                <div className={`ic ${rarClass(dungeon.reward.rarity)}`}>
+                  <ItemIcon baseId={dungeon.reward.baseId} />
+                </div>
                 <div className="loot-main">
                   <div className={`loot-name ${rarClass(dungeon.reward.rarity)}`}>{dungeon.reward.name}</div>
                   <div className="tiny muted">{rewardBase.name}</div>
