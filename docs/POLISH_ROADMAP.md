@@ -155,3 +155,14 @@ A UI polida nesta fase foi desenhada para receber essas trilhas sem retrabalho: 
 2. Definir o contrato de assets `iconId → SVG` e ligar em `content.ts`/`engine.itemGlyph` (F2).
 3. Subir a galeria de componentes (F3).
 4. Iniciar a **Fase A**: primeiro lote de ícones de tipo-base + molduras de raridade em slot e inventário.
+
+## 10. Progresso de execução
+
+- **02/07/2026 — Fase A entregue (parcial da fundação F2 junto).**
+  - `src/ui/icons.tsx`: sistema de ícones SVG inline (`ItemIcon`, `OrbIcon`) — machado/espada/adaga/escudo/elmo/luvas/peitoral/botas/amuleto/anel + orbes coloridos por identidade.
+  - **F2 (contrato de assets):** campo `icon` em `ItemBase` (só as armas precisam; o resto deriva de `kind`). Arte final entra por dado, sem mexer em componente.
+  - Aplicado em Equipamento (manequim, inventário, preview de craft, bancada de orbes) e Mercado — **fim dos placeholders de letra**.
+  - Molduras: glow de raridade no tile do ícone + **selo de corrompido** (marca Vaal).
+  - Motor (`src/game/`) intocado. `typecheck` + 29 testes + `build` verdes.
+  - Pendente da Fase A/F: F1 (tokens semânticos), F3 (galeria de componentes), ícones de gema de habilidade, arte final (Fase F).
+- **Próximo:** Fase B — comparação equipado × candidato + tooltip acessível/fixável no toque.

@@ -4,7 +4,8 @@ import { itemByUid } from '../game/store'
 import type { Game } from '../game/store'
 import type { EquipSlot, ItemInstance, OrbId } from '../game/types'
 import { RARITY_LABEL, rarClass } from '../ui/format'
-import { ItemTooltip, PageHead, Panel, PowerBar, itemIconGlyph } from '../ui/atoms'
+import { ItemTooltip, PageHead, Panel, PowerBar } from '../ui/atoms'
+import { ItemIcon, OrbIcon } from '../ui/icons'
 
 const DOLL: EquipSlot[][] = [
   ['weapon', 'head', 'offhand'],
@@ -63,8 +64,11 @@ export function EquipmentPage({ game }: { game: Game }) {
                         onClick={() => game.selectItem(item.uid)}
                       >
                         <div className="slot__type">{SLOT_LABEL[slot]}</div>
-                        <div className="slot__icon">{itemIconGlyph(item)}</div>
+                        <div className="slot__icon">
+                          <ItemIcon baseId={item.baseId} />
+                        </div>
                         <div className="slot__name">{item.name}</div>
+                        {item.corrupted ? <span className="corrupt-seal" title="Corrompido" /> : null}
                         <ItemTooltip item={item} />
                       </button>
                     )
@@ -106,7 +110,8 @@ function InventoryRow({ item, game }: { item: ItemInstance; game: Game }) {
   return (
     <div className={`loot-row ${rarClass(item.rarity)}${isSel ? ' is-sel' : ''}`}>
       <button className={`ic ${rarClass(item.rarity)}`} onClick={() => game.selectItem(item.uid)}>
-        {itemIconGlyph(item)}
+        <ItemIcon baseId={item.baseId} />
+        {item.corrupted ? <span className="corrupt-seal" title="Corrompido" /> : null}
       </button>
       <div className="loot-main">
         <button className={`loot-name ${rarClass(item.rarity)}`} onClick={() => game.selectItem(item.uid)}>
@@ -135,7 +140,9 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
       {selected ? (
         <>
           <div className={`craft-preview ${rarClass(selected.rarity)}`}>
-            <div className="craft-preview__icon">{itemIconGlyph(selected)}</div>
+            <div className="craft-preview__icon">
+              <ItemIcon baseId={selected.baseId} />
+            </div>
             <div>
               <div className={`craft-preview__name ${rarClass(selected.rarity)}`}>{selected.name}</div>
               <div className="tiny muted">
@@ -157,6 +164,7 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
                   title={orb.description}
                   onClick={() => game.applyCraft(orb.id as OrbId)}
                 >
+                  <OrbIcon id={orb.id as OrbId} />
                   <span className="orb-name">{orb.short}</span>
                   <span className="orb-count">{count}</span>
                 </button>

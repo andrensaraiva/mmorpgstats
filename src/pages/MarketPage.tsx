@@ -2,6 +2,7 @@ import { MARKET, getBase } from '../game/content'
 import type { Game } from '../game/store'
 import { RARITY_LABEL, fmtInt, rarClass } from '../ui/format'
 import { PageHead, Panel } from '../ui/atoms'
+import { ItemIcon } from '../ui/icons'
 
 export function MarketPage(_props: { game: Game }) {
   return (
@@ -41,7 +42,9 @@ export function MarketPage(_props: { game: Game }) {
                 <tr key={m.id}>
                   <td>
                     <div className="item-cell">
-                      <div className={`ic ${rarClass(m.rarity)}`}>{base.name.charAt(0)}</div>
+                      <div className={`ic ${rarClass(m.rarity)}`}>
+                        <ItemIcon baseId={m.baseId} />
+                      </div>
                       <div>
                         <div className={`market-name ${rarClass(m.rarity)}`}>{m.name}</div>
                         <div className="tiny muted">

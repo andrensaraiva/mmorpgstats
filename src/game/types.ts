@@ -85,6 +85,8 @@ export interface ItemBase {
   name: string
   kind: BaseKind
   itemClass: ItemClass
+  /** Contrato de assets: id do ícone (Fase A). Ausente = deriva de `kind`. */
+  icon?: string
   /** Dano físico base + velocidade de ataque (só armas). */
   weapon?: { physMin: number; physMax: number; attackSpeed: number }
   /** Modificador implícito fixo da base. */
