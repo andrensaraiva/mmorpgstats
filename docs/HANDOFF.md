@@ -1,10 +1,11 @@
 # Handoff de Sessão — Consolidação dos Protótipos
 
-- **Data:** 01 de julho de 2026
+- **Criado:** 01 de julho de 2026 · **Atualizado:** 02 de julho de 2026
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
-- **Status:** **consolidação concluída.** Existe agora **um só** protótipo (app React na raiz). O `prototype-claude/` foi removido e a base `src/` foi reescrita em torno de um motor de dados.
+- **Status:** consolidação concluída (um só protótipo React na raiz) **e fase de Polish Visual & UX em andamento** — Fases A e B concluídas, Fase C em andamento. Ver o log granular em [POLISH_ROADMAP.md §10](./POLISH_ROADMAP.md).
+- **Último commit:** `86aec8a` (branch `main`, origin = github.com/andrensaraiva/mmorpgstats).
 
-> Para o próximo assistente/sessão: leia este arquivo inteiro. A seção "Estado atual" descreve o que ficou pronto; a seção "Próximos passos" indica onde continuar.
+> Para o próximo assistente/sessão: leia este arquivo inteiro. Comece pela **§5 — Ponto de partida** (é onde a fase de Polish parou). O fluxo de trabalho do dono: **commite cada etapa, atualize os docs, push perto do fim da sessão** (typecheck+test+build verdes a cada passo).
 
 ---
 
@@ -30,15 +31,14 @@ Tudo vive no app React da raiz. Núcleo de jogo separado da UI, em `src/game/`:
 - **`src/game/content.ts`** — dados: bases de item, pool de afixos com tiers/faixas, orbes, habilidades + suportes, árvore (nós/arestas), dungeons, mercado, únicos e o inventário/equipamento iniciais.
 - **`src/game/engine.ts`** — **motor puro**: `aggregate` (deriva DPS/EHP/resistências de equipado + árvore + suportes), `craft` (orbes/corrupção, sempre gera nova instância → invalida o fingerprint), `fingerprint`, `estimateRange`, `dungeonOutcome`, utilidades da árvore. Aleatoriedade entra por um `Rng` (mulberry32 seedável).
 - **`src/game/store.ts`** — estado React (`useReducer` + seletores): inventário, equipado, alocação, soquetes, moedas, dungeon selecionada, `measured` (DPS medido) e `knownDps` (só quando o fingerprint bate).
-- **`src/ui/`** — `format.ts` e `atoms.tsx` (Panel, PageHead, PowerBar com a lógica de números descobertos, ItemTooltip).
-- **`src/pages/`** — Portal, Personagem, Habilidades, Equipamento (manequim + inventário + bancada de crafting), Árvore (zoom/pan), Masmorra (tentativa → revela DPS real), Mercado.
-- **`src/App.tsx`** — shell (top bar, nav, footer) e roteamento por estado.
+- **`src/ui/`** — `format.ts`, `atoms.tsx` (Panel, PageHead, PowerBar, **HeroBoard/HeroPortrait/PowerDetails/ResistRow**, ItemTooltip/ItemTooltipBody), **`icons.tsx`** (ItemIcon/OrbIcon SVG — Fase A), **`tooltip.tsx`** (tooltip flutuante acessível — Fase B), **`CountUp.tsx`** (contagem animada — Fase C).
+- **`src/pages/`** — Portal (**hub de mundo vivo**: temporada, mecânica sazonal coletiva, eventos, feed ao vivo, pulso econômico, ladder), Personagem (**dashboard**: progressão, build atual real, loadouts, histórico, recordes, conquistas), Habilidades, Equipamento (manequim + inventário + crafting + **comparação equipado×candidato**), Árvore (zoom/pan), Masmorra (tentativa → revela DPS real), Mercado, e o shell de Auth/roster/criação.
+- **`src/App.tsx`** — shell (top bar, nav, footer) + `ItemTipProvider` (contexto do tooltip) e roteamento por estado.
 - **`src/styles/global.css`** — visual POE full-width portado do `prototype-claude/styles.css`.
 
-### Validação técnica concluída nesta sessão
-- `npm run typecheck` sem erros.
-- `npm test` — **18 testes** aprovados (`src/game/engine.test.ts` + `src/App.test.tsx`), cobrindo agregação de poder, suportes, soquetes, anel de fogo, tempo/sobrevivência de dungeon, fingerprint, crafting (transmutação, bloqueio de corrompido, Vaal, imutabilidade da entrada), o fluxo de estimativa→DPS real e um craft pela UI.
-- `npm run build` (tsc + vite) concluído.
+### Validação técnica (verde a cada commit)
+- `npm run typecheck` sem erros · `npm test` — **29 testes** aprovados · `npm run build` (tsc + vite) concluído.
+- Núcleo `src/game/` **puro e intocado** durante o polish (princípio do POLISH_ROADMAP: acabamento não muda regras).
 
 ---
 
@@ -72,17 +72,23 @@ O protótipo está consolidado e funcional; a fase seguинte é **evoluir rumo 
 | [ARPG_RESEARCH.md](./ARPG_RESEARCH.md) | pesquisa PoE2/Diablo4/Last Epoch + redesenho do market |
 | [POLISH_ROADMAP.md](./POLISH_ROADMAP.md) | fases de acabamento visual & UX |
 
-### Duas primeiras fatias recomendadas para codar (escolher uma para começar)
+O dono escolheu começar a virada pelo **Polish Visual & UX** ([POLISH_ROADMAP.md](./POLISH_ROADMAP.md)). Progresso (log detalhado no §10 do roadmap):
 
-1. **Conteúdo/UX — S1+S2** ([EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)): enriquecer o **modelo de item** (qualidade, defesas evasão/ES, requisitos, novos afixos) e refazer o **tooltip com comparação equipado × candidato**. Base para quase todo o resto; entrega uma descrição "de produto".
-2. **Motor — M1** ([COMBAT_AND_ARCHETYPES](./COMBAT_AND_ARCHETYPES.md)): generalizar o pipeline de dano para **múltiplos tipos** (físico/fogo/frio/raio/caos) + penetração/resistências por tipo. Destrava os arquétipos elemental/DoT e é o passo de menor risco no motor.
+- ✅ **Fase A — ícones & molduras.** `src/ui/icons.tsx` (ItemIcon/OrbIcon SVG), contrato `icon` nas bases (F2), glow de raridade, selo de corrompido. Fim dos placeholders de letra.
+- ✅ **Fase B — comparação + tooltip acessível.** `ComparePanel` (delta equipado×candidato) e `src/ui/tooltip.tsx` (flutuante, hover+foco+toque, fixável, Esc/fora/×, sem cortar, aria).
+- 🔶 **Fase C — microinterações (em andamento).** Feito: **confirmação obrigatória do Vaal** e o **momento "DPS real descoberto"** (count-up animado, `src/ui/CountUp.tsx`, respeita `prefers-reduced-motion`).
 
-> Recomendação: começar por **S1** (destrava a UI rica e a busca do market) e emendar **M1** logo em seguida. Manter `npm run typecheck`, `npm test` e `npm run build` verdes a cada passo; o núcleo `src/game/` é puro e coberto por testes.
+### ▶ RETOMAR AQUI — resto da Fase C
+No relatório da dungeon / bancada:
+1. **Feedback de equipar/craftar**: brilho/pulso ao equipar; ao craftar, brilho do orbe e **moedas decrementando** visivelmente.
+2. **Transição estimativa↔real na PowerBar** (suave quando o DPS passa de estimado para medido).
+3. **Realce do afixo alterado após um craft** (novo/alterado/removido — precisa diffar o item antigo vs. o novo no `applyCraft`/`replaceItem`).
+Tudo sob `prefers-reduced-motion`. Depois: **Fase D** (filtros de inventário + onboarding + toasts), **Fase E** (a11y/teclado/mobile). Fundações ainda pendentes: **F1** (tokens semânticos) e **F3** (galeria de componentes).
 
-### Itens táticos menores (quando fizer sentido)
-- Refino de balanceamento dos afixos/tiers e da escala de tempo de dungeon (hoje calibrada por olho).
-- Persistência local (o estado reinicia ao recarregar).
-- Atualizar POE2_REFERENCE se o schema de crafting divergir (a corrupção, "desativada no schema" lá, já está ativa aqui).
+### Trilhas paralelas (depois/junto do polish)
+- **S1+ (conteúdo/item)** — modelo de item rico (qualidade, defesas evasão/ES, requisitos, novos afixos): [EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md).
+- **M1 (motor multi-tipo)** — dano físico/fogo/frio/raio/caos + penetração/resistências por tipo: [COMBAT_AND_ARCHETYPES](./COMBAT_AND_ARCHETYPES.md). Ver também a nova seção **A0** (atributos & recursos, denominador comum dos ARPGs, com o que está implementado vs planejado — evasão/ES em M2, recurso/pool depois).
+- **Tornar real (persistência)** — hoje o estado reinicia ao recarregar; histórico/recordes/loadouts do dashboard são demonstrativos. Gravar runs no `store` + persistir em localStorage os tornaria reais.
 
 ## 6. Observações
 
