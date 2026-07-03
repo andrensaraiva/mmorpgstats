@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BESTIARY, DUNGEONS, getBase } from '../game/content'
-import { dungeonReplay, simulateDungeon } from '../game/engine'
+import { dungeonReplay, dungeonXp, simulateDungeon } from '../game/engine'
 import type { AttemptResult, Game } from '../game/store'
 import type {
   DamageType,
@@ -88,6 +88,13 @@ export function DungeonPage({ game }: { game: Game }) {
           timeControlled: outcome.report.timeControlled,
           peakDps: outcome.report.peakDps,
           incomingDps: outcome.report.incomingDps,
+          xpGained: dungeonXp(
+            dungeon.lvl,
+            outcome.survivable,
+            outcome.report.totalMonsters > 0
+              ? outcome.report.enemiesDefeated / outcome.report.totalMonsters
+              : 0,
+          ),
         }
         // Rodar a dungeon "descobre" o DPS real do fingerprint atual.
         game.dispatch({

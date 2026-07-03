@@ -6,6 +6,7 @@
 
 export type ViewId =
   | 'portal'
+  | 'campanha'
   | 'personagem'
   | 'habilidades'
   | 'equipamento'
@@ -17,6 +18,39 @@ export interface NavItem {
   id: ViewId
   label: string
   tag?: string
+}
+
+/* ---------- progressão / campanha (P1) ---------- */
+
+/** Sistemas que a campanha destrava, um por marco. Ver PROGRESSION_AND_STORY §2.4. */
+export type SystemId =
+  | 'equipamento'
+  | 'arvore'
+  | 'habilidades'
+  | 'mercado'
+  | 'masmorra'
+
+/**
+ * Um nó da campanha (P1): um encontro narrativo que reusa uma dungeon existente,
+ * dá XP/loot garantidos ao vencer e pode desbloquear um sistema.
+ */
+export interface CampaignNode {
+  id: string
+  act: number
+  order: number
+  title: string
+  /** Texto de abertura (setup lido antes de enviar). */
+  intro: string
+  /** Texto de desfecho (lido no relatório de vitória). */
+  outcome: string
+  /** A mecânica que este nó ensina (uma linha). */
+  teaches: string
+  /** Dungeon reusada como encontro. */
+  dungeonId: string
+  /** Nível mínimo sugerido para o encontro. */
+  levelReq: number
+  /** Sistema destravado ao concluir (opcional). */
+  unlocks?: SystemId
 }
 
 /* ---------- raridade e slots ---------- */

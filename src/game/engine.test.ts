@@ -15,7 +15,10 @@ import {
   craft,
   dungeonOutcome,
   dungeonReplay,
+  dungeonXp,
   fingerprint,
+  levelForXp,
+  levelProgress,
   makeRng,
   measuredRotation,
   resolveItemMods,
@@ -23,6 +26,7 @@ import {
   simulateRotation,
   skillAvailability,
   unmetRequirements,
+  xpForLevel,
 } from './engine'
 import type { ItemInstance, Power, SkillDefinition } from './types'
 
@@ -675,6 +679,36 @@ describe('S — item rico (qualidade, requisitos) e skills por arma', () => {
     expect(ids).toContain('sk_strike') // corpo-a-corpo, ok com machado
     expect(ids).not.toContain('sk_shock_arrow') // arco, travada
     expect(ids).not.toContain('sk_fireball') // cajado/varinha, travada
+  })
+})
+
+describe('P1 — progressão (XP / nível)', () => {
+  it('xpForLevel cresce monotonicamente; nível 1 = 0', () => {
+    expect(xpForLevel(1)).toBe(0)
+    expect(xpForLevel(2)).toBeGreaterThan(0)
+    for (let n = 2; n <= 30; n++) expect(xpForLevel(n)).toBeGreaterThan(xpForLevel(n - 1))
+  })
+
+  it('levelForXp é o inverso de xpForLevel', () => {
+    for (let lvl = 1; lvl <= 20; lvl++) {
+      expect(levelForXp(xpForLevel(lvl))).toBe(lvl)
+      expect(levelForXp(xpForLevel(lvl) - 1)).toBe(Math.max(1, lvl - 1))
+    }
+  })
+
+  it('levelProgress dá fração 0..1 dentro do nível', () => {
+    const start = levelProgress(xpForLevel(5))
+    expect(start.level).toBe(5)
+    expect(start.frac).toBeCloseTo(0, 5)
+    const mid = levelProgress(xpForLevel(5) + Math.floor((xpForLevel(6) - xpForLevel(5)) / 2))
+    expect(mid.frac).toBeGreaterThan(0.4)
+    expect(mid.frac).toBeLessThan(0.6)
+  })
+
+  it('vencer dá mais XP que perder; XP escala com o nível da dungeon', () => {
+    expect(dungeonXp(10, true)).toBeGreaterThan(dungeonXp(10, false, 1))
+    expect(dungeonXp(20, true)).toBeGreaterThan(dungeonXp(5, true))
+    expect(dungeonXp(10, false, 0)).toBe(0) // perdeu sem limpar nada
   })
 })
 

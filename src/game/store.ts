@@ -7,6 +7,7 @@
 
 import { useCallback, useMemo, useReducer } from 'react'
 import {
+  CAMPAIGN,
   MAIN_SKILL_ID,
   SKILLS,
   STARTER_CURRENCY,
@@ -20,6 +21,8 @@ import {
   connectedToStart,
   craft as craftItem,
   fingerprint,
+  levelForXp,
+  levelProgress,
   makeRng,
   measuredRotation,
   slotAccepts,
@@ -35,6 +38,7 @@ import type {
   OrbId,
   Power,
   SkillSlot,
+  SystemId,
   ViewId,
 } from './types'
 
@@ -59,6 +63,8 @@ export interface AttemptResult {
   timeControlled: number
   peakDps: number
   incomingDps: number
+  /** XP concedido por esta tentativa (P1). */
+  xpGained: number
 }
 
 /**
@@ -86,6 +92,12 @@ export interface Toast {
 
 export interface GameState {
   page: ViewId
+  /** XP acumulado do herói (P1) — nível deriva daqui via engine.levelForXp. */
+  xp: number
+  /** Nós da campanha concluídos (P1). */
+  completedNodes: string[]
+  /** Sistemas destravados pela campanha (P2). */
+  unlockedSystems: SystemId[]
   inventory: ItemInstance[]
   equipped: Partial<Record<EquipSlot, string>>
   allocated: Set<string>
@@ -110,7 +122,10 @@ export interface GameState {
 function initState(): GameState {
   const starter = makeStarter()
   return {
-    page: 'portal',
+    page: 'campanha',
+    xp: 0,
+    completedNodes: [],
+    unlockedSystems: [],
     inventory: starter.inventory,
     equipped: starter.equipped,
     allocated: new Set(TREE.preAlloc),
@@ -152,8 +167,19 @@ type Action =
   | { type: 'notice'; message: string | null }
   | { type: 'pushToast'; tone: ToastTone; message: string }
   | { type: 'dismissToast'; id: number }
+  | { type: 'completeCampaignNode'; nodeId: string }
+  | { type: 'campaignReward'; xpGained: number; measured: Measured | null }
 
 const adjacency = treeAdjacency()
+
+/** Rótulo dos sistemas destravados pela campanha (P2). */
+const SYSTEM_LABEL: Record<SystemId, string> = {
+  equipamento: 'Equipamento & Crafting',
+  arvore: 'Árvore Passiva',
+  habilidades: 'Habilidades',
+  mercado: 'Mercado',
+  masmorra: 'Masmorra livre',
+}
 
 function pointsUsed(allocated: Set<string>): number {
   return allocated.size - 1 // origem não conta
@@ -282,20 +308,31 @@ function reducer(state: GameState, action: Action): GameState {
     case 'attemptRun':
       return { ...state, attemptPhase: 'running', attemptResult: null }
 
-    case 'attemptFinish':
+    case 'attemptFinish': {
+      // Progressão (P1): a tentativa concede XP; subir de nível dispara toast.
+      const gained = action.result.xpGained
+      const xp = state.xp + gained
+      const before = levelForXp(state.xp)
+      const after = levelForXp(xp)
+      let toasts = state.toasts
+      if (gained > 0) toasts = withToast(toasts, 'good', `+${gained.toLocaleString('pt-BR')} XP`)
+      if (after > before) toasts = withToast(toasts, 'loot', `⬆ Nível ${after}!`)
+      if (action.measured) {
+        toasts = withToast(
+          toasts,
+          'info',
+          `DPS real descoberto: ${Math.round(action.measured.dps).toLocaleString('pt-BR')}`,
+        )
+      }
       return {
         ...state,
+        xp,
         attemptPhase: 'report',
         attemptResult: action.result,
         measured: action.measured ?? state.measured,
-        toasts: action.measured
-          ? withToast(
-              state.toasts,
-              'info',
-              `DPS real descoberto: ${Math.round(action.measured.dps).toLocaleString('pt-BR')}`,
-            )
-          : state.toasts,
+        toasts,
       }
+    }
 
     case 'measure':
       return {
@@ -319,6 +356,32 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'dismissToast':
       return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) }
+
+    case 'campaignReward': {
+      // Concede XP + mede o DPS SEM mexer no relatório global da Masmorra
+      // (a campanha tem seu próprio relatório local).
+      const gained = action.xpGained
+      const xp = state.xp + gained
+      const before = levelForXp(state.xp)
+      const after = levelForXp(xp)
+      let toasts = state.toasts
+      if (gained > 0) toasts = withToast(toasts, 'good', `+${gained.toLocaleString('pt-BR')} XP`)
+      if (after > before) toasts = withToast(toasts, 'loot', `⬆ Nível ${after}!`)
+      return { ...state, xp, measured: action.measured ?? state.measured, toasts }
+    }
+
+    case 'completeCampaignNode': {
+      if (state.completedNodes.includes(action.nodeId)) return state
+      const node = CAMPAIGN.find((n) => n.id === action.nodeId)
+      const completedNodes = [...state.completedNodes, action.nodeId]
+      let unlockedSystems = state.unlockedSystems
+      let toasts = state.toasts
+      if (node?.unlocks && !unlockedSystems.includes(node.unlocks)) {
+        unlockedSystems = [...unlockedSystems, node.unlocks]
+        toasts = withToast(toasts, 'loot', `✦ Sistema liberado: ${SYSTEM_LABEL[node.unlocks]}`)
+      }
+      return { ...state, completedNodes, unlockedSystems, toasts }
+    }
 
     default:
       return state
@@ -383,6 +446,10 @@ export function useGame() {
     () => (state.measured && state.measured.fingerprint === currentFingerprint ? state.measured.dps : null),
     [state.measured, currentFingerprint],
   )
+
+  /** Progressão (P1): nível e barra de XP derivados do xp acumulado. */
+  const level = useMemo(() => levelForXp(state.xp), [state.xp])
+  const progress = useMemo(() => levelProgress(state.xp), [state.xp])
 
   const navigate = useCallback((page: ViewId) => {
     dispatch({ type: 'navigate', page })
@@ -450,10 +517,17 @@ export function useGame() {
     [state],
   )
 
+  const completeCampaignNode = useCallback(
+    (nodeId: string) => dispatch({ type: 'completeCampaignNode', nodeId }),
+    [],
+  )
+
   return {
     state,
     power,
     knownDps,
+    level,
+    progress,
     currentFingerprint,
     mainSkillId: MAIN_SKILL_ID,
     navigate,
@@ -469,6 +543,7 @@ export function useGame() {
     resetAttempt,
     measureDummy,
     applyCraft,
+    completeCampaignNode,
     pushToast,
     dismissToast,
     dispatch,

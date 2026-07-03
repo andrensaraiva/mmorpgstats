@@ -3,6 +3,7 @@ import { useSession } from './game/session'
 import { useGame } from './game/store'
 import type { ViewId } from './game/types'
 import { AuthPage } from './pages/AuthPage'
+import { CampaignPage } from './pages/CampaignPage'
 import { CharacterCreatePage } from './pages/CharacterCreatePage'
 import { CharacterPage } from './pages/CharacterPage'
 import { CharacterSelectPage } from './pages/CharacterSelectPage'
@@ -44,14 +45,21 @@ export function App() {
   )
 }
 
+/** Abas sempre disponíveis; as demais são liberadas pela campanha (P2). */
+const ALWAYS_OPEN: ViewId[] = ['portal', 'campanha', 'personagem', 'habilidades']
+
 /** O jogo em si (após entrar com um herói). Mantém o motor/estado atual. */
 function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
   const game = useGame()
-  const { page } = game.state
+  const { page, unlockedSystems } = game.state
   const hero = session.activeCharacter
   const cls = hero ? classById[hero.classId] : null
   // Onboarding aparece na primeira sessão; o "?" na top bar reabre.
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding())
+
+  // Uma aba está liberada se é sempre-aberta ou seu sistema foi destravado (P2).
+  const isOpen = (id: ViewId) => ALWAYS_OPEN.includes(id) || unlockedSystems.includes(id as never)
+  const visibleNav = NAV.filter((n) => isOpen(n.id as ViewId))
 
   return (
     <div className="app">
@@ -89,7 +97,14 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
             <span className="acct__col">
               <span className="acct__hero">{hero?.name ?? 'Herói'}</span>
               <span className="acct__lvl">
-                {cls?.name ?? ''} · Nv {hero?.level ?? 1}
+                {cls?.name ?? ''} · Nv {game.level}
+              </span>
+              <span
+                className="xp-bar"
+                title={`Nível ${game.level} · ${Math.round(game.progress.into)}/${game.progress.span} XP`}
+                aria-label={`Nível ${game.level}, ${Math.round(game.progress.frac * 100)}% para o próximo`}
+              >
+                <span className="xp-bar__fill" style={{ width: `${game.progress.frac * 100}%` }} />
               </span>
             </span>
           </button>
@@ -100,7 +115,7 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
       </header>
 
       <nav className="app-nav" aria-label="Navegação principal">
-        {NAV.map((n) => (
+        {visibleNav.map((n) => (
           <button
             key={n.id}
             className={`navbtn${n.id === page ? ' is-active' : ''}`}
@@ -115,6 +130,7 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
 
       <main className="app-main" id="main-content" tabIndex={-1}>
         {page === 'portal' && <PortalPage game={game} hero={hero} />}
+        {page === 'campanha' && <CampaignPage game={game} />}
         {page === 'personagem' && <CharacterPage game={game} hero={hero} />}
         {page === 'habilidades' && <SkillsPage game={game} />}
         {page === 'equipamento' && <EquipmentPage game={game} />}

@@ -176,6 +176,51 @@ export function availableSkills(
   return skills.filter((s) => skillAvailability(s, equipped, level).available)
 }
 
+/* ===================== PROGRESSÃO (XP / NÍVEL) ===================== */
+/*
+   Curva de XP inspirada no gênero: cada nível pede mais que o anterior. Puro e
+   determinístico. XP vem de dungeons vencidas, escalado pelo nível do encontro.
+   Ver docs/PROGRESSION_AND_STORY.md §2.3.
+*/
+
+export const MAX_LEVEL = 60
+
+/** XP total acumulado necessário para ATINGIR um dado nível (nível 1 = 0). */
+export function xpForLevel(level: number): number {
+  const l = clamp(level, 1, MAX_LEVEL)
+  // Soma de um custo por nível que cresce ~quadraticamente (piso do gênero).
+  let total = 0
+  for (let n = 1; n < l; n++) total += 100 + n * n * 8
+  return total
+}
+
+/** Nível correspondente a um XP total acumulado. */
+export function levelForXp(xp: number): number {
+  let lvl = 1
+  while (lvl < MAX_LEVEL && xp >= xpForLevel(lvl + 1)) lvl++
+  return lvl
+}
+
+/** Progresso (0–1) dentro do nível atual, e XP faltando p/ o próximo. */
+export function levelProgress(xp: number): { level: number; into: number; span: number; frac: number } {
+  const level = levelForXp(xp)
+  const cur = xpForLevel(level)
+  const next = level >= MAX_LEVEL ? cur : xpForLevel(level + 1)
+  const span = Math.max(1, next - cur)
+  const into = xp - cur
+  return { level, into, span, frac: level >= MAX_LEVEL ? 1 : clamp(into / span, 0, 1) }
+}
+
+/**
+ * XP concedido por uma tentativa de dungeon. Vitória dá cheio; derrota dá uma
+ * fração pelo que limpou (não punir demais — o jogador aprendeu algo). Escala
+ * com o nível do encontro.
+ */
+export function dungeonXp(dungeonLevel: number, win: boolean, clearedFraction = 0): number {
+  const base = 40 + dungeonLevel * dungeonLevel * 2
+  return Math.round(win ? base : base * 0.25 * clamp(clearedFraction, 0, 1))
+}
+
 /* ===================== POWER MODEL ===================== */
 
 const supportById = Object.fromEntries(SUPPORTS.map((s) => [s.id, s]))

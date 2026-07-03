@@ -6,6 +6,7 @@
 
 import type {
   AffixGroup,
+  CampaignNode,
   Dungeon,
   ItemBase,
   ItemInstance,
@@ -96,6 +97,7 @@ export const MAIN_SKILL_ID = 'sk_strike'
 
 export const NAV: NavItem[] = [
   { id: 'portal', label: 'Portal' },
+  { id: 'campanha', label: 'Campanha', tag: 'NOVO' },
   { id: 'personagem', label: 'Personagem' },
   { id: 'habilidades', label: 'Habilidades' },
   { id: 'equipamento', label: 'Equipamento', tag: 'CRAFT' },
@@ -1027,6 +1029,61 @@ export const DUNGEONS: Dungeon[] = [
       ],
     },
     reward: { baseId: 'war_axe', rarity: 'rare', name: 'Britadora do Fosso' },
+  },
+]
+
+/* ===================== CAMPANHA (P1) ===================== */
+/*
+   Trilha ordenada de encontros narrativos que reusam as dungeons. Cada marco
+   ensina uma mecânica e destrava um sistema — "ensinar, não despejar".
+   Ver docs/PROGRESSION_AND_STORY.md §2.4.
+*/
+
+export const CAMPAIGN: CampaignNode[] = [
+  {
+    id: 'c-prologue', act: 0, order: 0, title: 'Prólogo — O Golpe',
+    intro:
+      'As Cinzas engoliram a estrada. Antes de qualquer feitiçaria, prove que sua lâmina morde: um pacote de carniçais bloqueia a descida à Cripta.',
+    outcome:
+      'O último carniçal tomba. Você sente o peso da arma na mão — e como cada afixo dela muda o golpe. Seu equipamento está liberado.',
+    teaches: 'Golpe e DPS: a arma e os afixos definem seu dano.',
+    dungeonId: 'd-crypt', levelReq: 1, unlocks: 'equipamento',
+  },
+  {
+    id: 'c-act1', act: 1, order: 1, title: 'Ato I — A Cripta',
+    intro:
+      'Mais fundo, a Cripta respira fogo pelas frestas. Sem resistência, a horda ígnea vai cozinhá-la viva. Ajuste a build — e talvez a árvore de talentos ajude.',
+    outcome:
+      'Você aguentou as labaredas e limpou a horda. A Árvore Passiva e os primeiros orbes de crafting se abrem: agora dá para esculpir o arquétipo.',
+    teaches: 'Resistência a fogo + horda (AoE). Abre a árvore e o crafting.',
+    dungeonId: 'd-crypt', levelReq: 8, unlocks: 'arvore',
+  },
+  {
+    id: 'c-act2', act: 2, order: 2, title: 'Ato II — A Fornalha',
+    intro:
+      'Na Fornalha Rachada, poucos inimigos — porém enormes. Golpe grande fura armadura fina. Escolha bem as habilidades da sua arma antes de descer.',
+    outcome:
+      'Os brutos caíram. A Masmorra assíncrona plena se abre: agora dá para enviar o herói a qualquer destino e ler o relatório causal — o campo de provas da build.',
+    teaches: 'Poucos-fortes + mitigação de golpe grande. Abre a Masmorra livre.',
+    dungeonId: 'd-forge', levelReq: 18, unlocks: 'masmorra',
+  },
+  {
+    id: 'c-act3', act: 3, order: 3, title: 'Ato III — A Geleira',
+    intro:
+      'O Sepulcro Glacial congela o tempo: o frio impõe controle e há inimigos que atacam do alto. Sua rotação e seu EHP serão testados de verdade.',
+    outcome:
+      'Você quebrou o gelo e a horda aérea. Correu a notícia: o Mercado dos Estrategistas agora negocia com você — comprar a peça certa é parte da build.',
+    teaches: 'Frio/controle + voadores. Abre o Mercado.',
+    dungeonId: 'd-glacier', levelReq: 30, unlocks: 'mercado',
+  },
+  {
+    id: 'c-act4', act: 4, order: 4, title: 'Ato IV — A Fenda',
+    intro:
+      'A Fenda das Cinzas sangra caos — e o caos fura o escudo de energia. É o chefe multi-fase que separa aprendizes de estrategistas. Traga sua melhor build.',
+    outcome:
+      'A Fenda se fecha atrás de você. A campanha terminou; o endgame (o Atlas das Fendas) o aguarda — mas isso é outra jornada.',
+    teaches: 'Caos (fura ES) + chefe multi-fase. Conclui a campanha.',
+    dungeonId: 'd-abyss', levelReq: 42,
   },
 ]
 

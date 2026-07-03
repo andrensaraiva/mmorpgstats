@@ -137,10 +137,12 @@ interface CharacterProgress {
 O `XP` entra no `DungeonOutcome`/relatório (hoje o outcome já tem `seconds`/`survivable`/`cause`; ganha `xpGained`). O **desbloqueio de sistema** é um efeito do reducer ao concluir um `CampaignNode`.
 
 ### 7.1 Faseamento
-- **P1:** estrutura de `CampaignNode[]` + trilha ordenada + XP/nível no outcome (reusa dungeon/bestiário).
-- **P2:** desbloqueio progressivo de sistemas (inventário→árvore→crafting→mercado→ascendência→bench→endgame).
+- ✅ **P1 — CONCLUÍDO (03/jul).** Curva de XP/nível pura no engine (`xpForLevel`/`levelForXp`/`levelProgress`/`dungeonXp`, `MAX_LEVEL` 60); `xp` no store (nível deriva daí), XP concedido por tentativa (`xpGained`), toast de "+XP" e "⬆ Nível". `CampaignNode[]` em `content.ts`: trilha de 5 marcos (Prólogo→Ato IV) que **reusam as dungeons** (escaladas pelo `levelReq` do marco em `CampaignPage`, para serem vencíveis na progressão). Tela **`CampaignPage`**: trilha (concluído/atual/travado), intro/outcome narrativos, "o que ensina", enviar o herói (roda `simulateDungeon`), relatório com count-up de XP. Barra de XP na top bar.
+- ✅ **P2 — CONCLUÍDO (03/jul).** Desbloqueio progressivo: `unlockedSystems`/`completedNodes` no store; `completeCampaignNode` marca o marco e destrava o sistema (toast). A **nav do App filtra** as abas: sempre-abertas (Portal/Campanha/Personagem/Habilidades) + as destravadas (Equipamento→prólogo, Árvore→Ato I, Masmorra→Ato II, Mercado→Ato III). Smoke test de integração cobre o fluxo.
 - **P3:** ascendência por marco + respec/loadouts baratos.
 - **P4:** injeção sazonal na campanha + "pular relato" por conta.
+
+> **Nota de balanceamento (P1).** O starter vence os primeiros atos; os finais (Geleira/Fenda) exigem **melhorar a build** (res. a frio/caos) — fiel ao gênero. A escala dos encontros de campanha (`scaledCampaignDungeon`) é provisória e entra no tuning.
 
 ---
 
