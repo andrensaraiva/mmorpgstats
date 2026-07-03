@@ -51,6 +51,14 @@ export interface AttemptResult {
   cause: string
   reason: FailReason
   breakingType?: DamageType
+  /** Métricas do combate (relatório completo — MVP §10.4). */
+  enemiesDefeated: number
+  totalMonsters: number
+  damageTaken: number
+  potionsUsed: number
+  timeControlled: number
+  peakDps: number
+  incomingDps: number
 }
 
 /**

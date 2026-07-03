@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BESTIARY, DUNGEONS, getBase } from '../game/content'
-import { dungeonOutcome, dungeonReplay } from '../game/engine'
+import { dungeonReplay, simulateDungeon } from '../game/engine'
 import type { AttemptResult, Game } from '../game/store'
 import type {
   DamageType,
@@ -48,7 +48,7 @@ function replaySeed(dungeonId: string, fingerprint: string): number {
 export function DungeonPage({ game }: { game: Game }) {
   const { state, power } = game
   const dungeon = DUNGEONS.find((d) => d.id === state.selectedDungeon)!
-  const outcome = dungeonOutcome(dungeon, power)
+  const outcome = simulateDungeon(dungeon, power)
   const replay = useMemo(
     () => dungeonReplay(dungeon, outcome, replaySeed(dungeon.id, game.currentFingerprint)),
     [dungeon, outcome, game.currentFingerprint],
@@ -81,6 +81,13 @@ export function DungeonPage({ game }: { game: Game }) {
           cause: outcome.cause,
           reason: outcome.reason,
           breakingType: outcome.breakingType,
+          enemiesDefeated: outcome.report.enemiesDefeated,
+          totalMonsters: outcome.report.totalMonsters,
+          damageTaken: outcome.report.damageTaken,
+          potionsUsed: outcome.report.potionsUsed,
+          timeControlled: outcome.report.timeControlled,
+          peakDps: outcome.report.peakDps,
+          incomingDps: outcome.report.incomingDps,
         }
         // Rodar a dungeon "descobre" o DPS real do fingerprint atual.
         game.dispatch({
@@ -106,7 +113,7 @@ export function DungeonPage({ game }: { game: Game }) {
       <Panel title="Escolher destino">
         <div className="dsel">
           {DUNGEONS.map((d) => {
-            const info = dungeonOutcome(d, power)
+            const info = simulateDungeon(d, power)
             const etaCls = info.survivable ? '' : 'eta-warn'
             return (
               <button
@@ -162,7 +169,7 @@ export function DungeonPage({ game }: { game: Game }) {
                 <div className="ddesc">{d.desc}</div>
                 <div className="dcard__eta">
                   <span className={`etak ${etaCls}`}>
-                    {info.survivable ? 'Tempo estimado' : 'Tempo — mas você morre no fogo'}
+                    {info.survivable ? 'Tempo estimado' : 'Tempo — mas o herói tomba'}
                   </span>
                   <span className={`etav ${etaCls}`}>{fmtTime(info.seconds)}</span>
                 </div>
@@ -199,7 +206,7 @@ export function DungeonPage({ game }: { game: Game }) {
               </div>
               <div className="snap mt4">
                 tempo estimado: <b className="teal">{fmtTime(outcome.seconds)}</b>
-                {outcome.survivable ? '' : <b className="blood"> · mas morte provável por fogo</b>}
+                {outcome.survivable ? '' : <b className="blood"> · mas morte provável</b>}
               </div>
               <div className="attempt-actions">
                 <button className="btn btn--blood btn--lg" onClick={run}>
@@ -222,24 +229,32 @@ export function DungeonPage({ game }: { game: Game }) {
 function Report({ game }: { game: Game }) {
   const r = game.state.attemptResult!
   const dungeon = DUNGEONS.find((d) => d.id === r.dungeonId)!
-  const dur = r.win ? r.seconds : r.seconds * 0.68
+  const dur = r.seconds
   const rewardBase = getBase(dungeon.reward.baseId)
 
   const stats: Array<[string, string]> = [
     ['Duração (simulada)', fmtTime(dur)],
+    ['Inimigos derrotados', `${r.enemiesDefeated}/${r.totalMonsters}`],
     ['DPS real (medido)', fmtInt(r.dps)],
-    ['Res. a fogo', `${r.fireRes}%`],
+    ['Pico de DPS (est.)', fmtInt(r.peakDps)],
+    ['Dano recebido', fmtInt(r.damageTaken)],
+    ['Poções usadas', String(r.potionsUsed)],
+    ...(r.timeControlled > 0
+      ? ([['Tempo sob controle', `${r.timeControlled}s`]] as Array<[string, string]>)
+      : []),
     ['Resultado', r.win ? 'Dungeon concluída' : 'Herói tombou'],
   ]
 
   const loseBanner =
-    r.reason === 'stall'
-      ? 'DERROTA — TENTATIVA ESTAGNOU'
-      : r.reason === 'attrition'
-        ? 'DERROTA — MORTE POR ATRITO'
-        : r.breakingType
-          ? `DERROTA — CAMADA DE ${TYPE_LABEL[r.breakingType].toUpperCase()} QUEBROU`
-          : 'DERROTA'
+    r.reason === 'control'
+      ? 'DERROTA — IMOBILIZADO POR CONTROLE'
+      : r.reason === 'stall'
+        ? 'DERROTA — TENTATIVA ESTAGNOU'
+        : r.reason === 'attrition'
+          ? 'DERROTA — MORTE POR ATRITO'
+          : r.breakingType
+            ? `DERROTA — CAMADA DE ${TYPE_LABEL[r.breakingType].toUpperCase()} QUEBROU`
+            : 'DERROTA'
 
   return (
     <div className="report" role="region" aria-label="Relatório da tentativa">

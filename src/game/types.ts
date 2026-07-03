@@ -448,6 +448,7 @@ export type FailReason =
   | 'damage-type' // uma camada quebrou contra um tipo de dano
   | 'attrition' // não morreu de golpe, mas o tempo/dano acumulado venceu
   | 'stall' // não conseguiu limpar (ex.: voadores sem dano-no-ar)
+  | 'control' // ficou imobilizado (CC) e perdeu a corrida limpar×morrer
 
 export interface DungeonOutcome {
   seconds: number
@@ -458,6 +459,33 @@ export interface DungeonOutcome {
   breakingType?: DamageType
   /** Frase pronta explicando a causa e um delta acionável. */
   cause: string
+}
+
+/**
+ * Métricas completas da tentativa (o checklist do MVP §10.4). Saem todas da
+ * simulação de combate por ticks — o lado defensivo do motor (R4).
+ */
+export interface DungeonReport {
+  enemiesDefeated: number
+  totalMonsters: number
+  /** Dano total recebido (mitigado) durante a tentativa. */
+  damageTaken: number
+  potionsUsed: number
+  /** Segundos que o herói passou imobilizado por controle. */
+  timeControlled: number
+  avgDps: number
+  /** Pico de DPS (estimado a partir do combo). */
+  peakDps: number
+  /** Dano recebido por segundo (mitigado). */
+  incomingDps: number
+  /** Tempo-para-limpar (base) e tempo-para-morrer (Infinity se sobrevive). */
+  tClear: number
+  tDie: number
+}
+
+/** Resultado do combate simulado da dungeon: o outcome + o relatório rico. */
+export interface DungeonRun extends DungeonOutcome {
+  report: DungeonReport
 }
 
 /* ---------- replay / minimapa da tentativa ---------- */

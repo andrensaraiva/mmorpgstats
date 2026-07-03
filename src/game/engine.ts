@@ -25,7 +25,10 @@ import type {
   Dungeon,
   DungeonOutcome,
   DungeonReplay,
+  DungeonReport,
+  DungeonRun,
   EquipSlot,
+  FailReason,
   ItemBase,
   ItemInstance,
   MarkerKind,
@@ -549,6 +552,152 @@ export function dungeonOutcome(dungeon: Dungeon, power: Power): DungeonOutcome {
     reason: 'none',
     cause: `Todas as camadas de defesa (${comp.damageMix.map((t) => TYPE_LABEL[t]).join(', ')}) seguraram.`,
   }
+}
+
+/* ===================== COMBATE DA DUNGEON (R4 — lado defensivo) ===================== */
+/*
+   A "corrida limpar × morrer": o herói tem um tempo-para-limpar (ofensa, cai
+   com o DPS) e um tempo-para-morrer (EHP ÷ dano recebido). Quem zera primeiro
+   decide. Glass cannon limpa rápido mas morre nos encontros lentos; tank limpa
+   devagar mas ganha a corrida. Controle (CC) pausa o ponteiro de limpar
+   enquanto o de morrer corre → morte por controle. Poções esticam o EHP.
+   Determinístico (sem RNG). Ver docs/COMBAT_ROTATION_AND_DUMMY.md §7.1.
+
+   Balanceamento provisório (constantes abaixo) — o dono ajusta ao testar.
+*/
+
+const INCOMING_K = 0.06 // dano recebido/s ≈ diff × isto, antes da mitigação
+const POTION_CHARGES = 4
+const POTION_THRESHOLD = 0.4 // usa poção quando a vida cai abaixo disto
+const POTION_HEAL_FRAC = 0.35 // cada poção cura esta fração da vida máxima
+const DUNGEON_CAP_SECONDS = 1200
+const CC_PERIOD = 7 // a cada N s há uma janela de controle
+const SIM_DT = 0.5
+
+function heroResOfType(power: Power, type: DamageType): number {
+  switch (type) {
+    case 'fire':
+      return power.fireRes
+    case 'cold':
+      return power.coldRes
+    case 'lightning':
+      return power.litRes
+    case 'chaos':
+      return power.chaosRes
+    default:
+      return 0
+  }
+}
+
+/** Dano recebido de um tipo, já pela camada de defesa (armadura p/ físico, res. p/ o resto). */
+function mitigatedIncoming(type: DamageType, raw: number, power: Power): number {
+  if (type === 'phys') return raw * (1 - power.armour / (power.armour + ARMOUR_K))
+  const res = clamp(heroResOfType(power, type), RES_FLOOR, RES_CAP)
+  return raw * (1 - res / 100)
+}
+
+/**
+ * Simula o combate da dungeon e devolve o outcome + relatório completo.
+ * Puro e determinístico. Usa `diff` como magnitude (já calibrada) e o
+ * bestiário/composição para tipos de dano, controle e contagem de inimigos.
+ */
+export function simulateDungeon(dungeon: Dungeon, power: Power): DungeonRun {
+  const comp = dungeon.composition
+  const types: DamageType[] = comp?.damageMix ?? (dungeon.fireThreat ? ['phys', 'fire'] : ['phys'])
+  const totalMonsters = comp ? comp.waves.reduce((s, w) => s + w.count, 0) : 10
+
+  const dpsEff = Math.max(1, power.dps)
+  const tClear = clamp((dungeon.diff / dpsEff) * DUNGEON_TIME_K, 6, DUNGEON_CAP_SECONDS)
+
+  // Dano recebido: dividido pelos tipos presentes, cada um pela sua camada.
+  const rawIncoming = dungeon.diff * INCOMING_K
+  const perType = types.map((type) => ({ type, mit: mitigatedIncoming(type, rawIncoming / types.length, power) }))
+  const incoming = perType.reduce((s, p) => s + p.mit, 0)
+  const worst = perType.reduce((a, b) => (b.mit > a.mit ? b : a), perType[0])
+
+  // Controle (CC): frio → chill/freeze; caster/support pressionam. Sem stat de
+  // redução de CC ainda (chega depois) → atinge todos igualmente por ora.
+  const hasCC =
+    types.includes('cold') || Boolean(comp?.roles.includes('caster')) || Boolean(comp?.roles.includes('support'))
+  const ccDur = hasCC ? clamp(1 + dungeon.lvl / 60, 1, 3) : 0
+
+  let potions = POTION_CHARGES
+  const potionHeal = POTION_HEAL_FRAC * power.life
+
+  let t = 0
+  let clearRemaining = tClear
+  let hp = power.life
+  let potionsUsed = 0
+  let timeControlled = 0
+  let damageTaken = 0
+  let diedControlled = false
+
+  while (clearRemaining > 0 && hp > 0 && t < DUNGEON_CAP_SECONDS) {
+    // Sob controle o herói não age: o ponteiro de limpar pausa, o de morrer corre.
+    const controlled = hasCC && t % CC_PERIOD < ccDur
+    if (controlled) timeControlled += SIM_DT
+    else clearRemaining -= SIM_DT
+
+    const dmg = incoming * SIM_DT
+    hp -= dmg
+    damageTaken += dmg
+    if (hp <= POTION_THRESHOLD * power.life && potions > 0) {
+      hp = Math.min(power.life, hp + potionHeal)
+      potions -= 1
+      potionsUsed += 1
+    }
+    if (hp <= 0) {
+      diedControlled = controlled
+      break
+    }
+    t += SIM_DT
+  }
+
+  const survivable = clearRemaining <= 0 && hp > 0
+  const seconds = Math.round(t)
+  const clearedFrac = clamp(1 - clearRemaining / tClear, 0, 1)
+  const enemiesDefeated = survivable ? totalMonsters : Math.floor(totalMonsters * clearedFrac)
+
+  let reason: FailReason = 'none'
+  let breakingType: DamageType | undefined
+  let cause: string
+  if (survivable) {
+    cause =
+      `Encontro limpo em ${seconds}s.` +
+      (potionsUsed > 0 ? ` ${potionsUsed} poção(ões) usada(s).` : '') +
+      (timeControlled > 0 ? ` ${Math.round(timeControlled)}s sob controle, mas o EHP aguentou.` : '')
+  } else if (diedControlled) {
+    reason = 'control'
+    cause =
+      `Imobilizado por controle no momento fatal — você não pôde agir enquanto o dano corria. ` +
+      `Reduzir duração de CC, +EHP, ou matar o aplicador (caster) antes resolve.`
+  } else if (worst && worst.type !== 'phys' && worst.mit >= incoming * 0.45) {
+    reason = 'damage-type'
+    breakingType = worst.type
+    cause =
+      `A camada de ${TYPE_LABEL[worst.type]} foi a que mais passou (~${Math.round(worst.mit)}/s recebidos). ` +
+      `Mais res. a ${TYPE_LABEL[worst.type]} — ou +EHP — segura a corrida.`
+  } else {
+    reason = 'attrition'
+    cause =
+      `Limpou ${Math.round(clearedFrac * 100)}% antes de cair: o dano recebido acumulou mais rápido que a vazão. ` +
+      `Mais DPS (limpa antes) OU mais EHP/poções (aguenta mais) resolve.`
+  }
+
+  const report: DungeonReport = {
+    enemiesDefeated,
+    totalMonsters,
+    damageTaken: Math.round(damageTaken),
+    potionsUsed,
+    timeControlled: Math.round(timeControlled * 10) / 10,
+    avgDps: Math.round(dpsEff),
+    peakDps: Math.round(dpsEff * 1.3),
+    incomingDps: Math.round(incoming),
+    tClear: Math.round(tClear),
+    tDie: hp > 0 ? Infinity : seconds,
+  }
+
+  return { seconds, survivable, reason, breakingType, cause, report }
 }
 
 /* ===================== REPLAY / MINIMAPA ===================== */

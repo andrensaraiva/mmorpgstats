@@ -18,6 +18,7 @@ import {
   makeRng,
   measuredRotation,
   resolveItemMods,
+  simulateDungeon,
   simulateRotation,
 } from './engine'
 import type { ItemInstance } from './types'
@@ -361,6 +362,47 @@ describe('simulateRotation (simulador de rotação — fatia do M5)', () => {
     expect(sim.dps).toBeGreaterThan(0)
     expect(sim.perSkill.every((s) => s.skillId === 'sk_basic')).toBe(true)
     expect(sim.comboUptime).toBe(0)
+  })
+})
+
+describe('simulateDungeon (combate: corrida limpar×morrer, CC, poções)', () => {
+  const crypt = DUNGEONS.find((d) => d.id === 'd-crypt')!
+  const glacier = DUNGEONS.find((d) => d.id === 'd-glacier')!
+  // Tank: pouco DPS, muito EHP/res. Glass cannon: muito DPS, pouca vida/defesa.
+  const tank = () => ({
+    ...basePower(), dps: 1500, life: 20000, ehp: 30000, armour: 4000,
+    fireRes: 75, coldRes: 75, litRes: 75, chaosRes: 75,
+  })
+  const glass = () => ({
+    ...basePower(), dps: 4000, life: 800, ehp: 900, armour: 100,
+    fireRes: 0, coldRes: 0, litRes: 0, chaosRes: 0,
+  })
+
+  it('o tank sobrevive onde o glass cannon morre — o eixo tank×DPS', () => {
+    const t = simulateDungeon(crypt, tank())
+    const g = simulateDungeon(crypt, glass())
+    expect(t.survivable).toBe(true)
+    expect(g.survivable).toBe(false)
+    expect(t.report.enemiesDefeated).toBe(t.report.totalMonsters)
+    expect(g.report.enemiesDefeated).toBeLessThan(g.report.totalMonsters)
+  })
+
+  it('quem morre gasta poções antes de cair', () => {
+    const g = simulateDungeon(crypt, glass())
+    expect(g.report.potionsUsed).toBeGreaterThan(0)
+  })
+
+  it('dungeon com frio impõe controle (tempo sob CC > 0)', () => {
+    const t = simulateDungeon(glacier, tank())
+    expect(t.report.timeControlled).toBeGreaterThan(0)
+  })
+
+  it('morrer durante o controle vira causa própria (reason: control)', () => {
+    // Frio + ameaça enorme → morte no primeiro instante, que é janela de controle.
+    const trap = { ...glacier, diff: 200000 }
+    const r = simulateDungeon(trap, glass())
+    expect(r.survivable).toBe(false)
+    expect(r.reason).toBe('control')
   })
 })
 
