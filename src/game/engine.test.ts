@@ -449,6 +449,53 @@ describe('simulateRotation (simulador de rotação — fatia do M5)', () => {
     const resOnly = simulateRotation({ equipped, allocated: ['s0'], loadout, target: { armour: 0, fireRes: 75 }, seconds: 8 })
     expect(resOnly.dps).toBe(bare.dps) // resistência elemental não toca o físico
   })
+
+  /* ---------- M3: ailments / DoT ---------- */
+
+  it('skill de sangramento adiciona DoT ao DPS (dotDps > 0)', () => {
+    const { equipped } = starterEquipped()
+    const r = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_rend', supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    expect(r.dotDps).toBeGreaterThan(0)
+    expect(r.dps).toBeGreaterThan(0)
+    // o breakdown expõe a fonte 'dot'
+    expect(r.perSkill.some((s) => s.skillId === 'dot')).toBe(true)
+  })
+
+  it('+incDot (suporte/nó) aumenta a parcela de DoT', () => {
+    const { equipped } = starterEquipped()
+    const base = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_rend', supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    const boosted = simulateRotation({
+      equipped, allocated: ['s0', 'o1', 'o6', 'o3', 'o7', 'o8'], // ramo de DoT (+60%)
+      loadout: [{ skillId: 'sk_rend', supports: ['s_dot'] }], // +25%
+      target: { armour: 0 }, seconds: 8,
+    })
+    expect(boosted.dotDps).toBeGreaterThan(base.dotDps)
+  })
+
+  it('veneno (empilha) escala com a cadência; DoT de caos sofre res. de caos', () => {
+    const { equipped } = starterEquipped()
+    const bare = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_plague', supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    const resisted = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_plague', supports: [] }],
+      target: { armour: 0, chaosRes: 50 }, seconds: 8,
+    })
+    expect(bare.dotDps).toBeGreaterThan(0)
+    expect(resisted.dotDps).toBeLessThan(bare.dotDps) // resistência a caos reduz o veneno
+    expect((resisted.damageByType.chaos ?? 0)).toBeGreaterThan(0)
+  })
 })
 
 describe('simulateDungeon (combate: corrida limpar×morrer, CC, poções)', () => {

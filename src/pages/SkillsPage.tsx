@@ -8,11 +8,20 @@ const TYPE_LABEL: Record<DamageType, string> = {
   phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
 }
 
-/** Selo do tipo de dano da skill (colorido por tipo — M1). */
+const AILMENT_LABEL: Record<string, string> = {
+  bleed: 'Sangramento', ignite: 'Queimadura', poison: 'Veneno',
+}
+
+/** Selo do tipo de dano da skill (colorido por tipo — M1) + ailment (M3). */
 function TypeTag({ skill }: { skill: SkillDefinition }) {
   if (skill.damageMult === 0) return null
   const t = skill.damageType ?? 'phys'
-  return <span className={`type-tag dt--${t}`}>{TYPE_LABEL[t]}</span>
+  return (
+    <>
+      <span className={`type-tag dt--${t}`}>{TYPE_LABEL[t]}</span>
+      {skill.ailment ? <span className="type-tag ailment-tag">☠ {AILMENT_LABEL[skill.ailment]}</span> : null}
+    </>
+  )
 }
 
 /** Banca de suportes compatíveis de uma skill (encaixar/remover por clique). */

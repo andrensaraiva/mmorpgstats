@@ -21,6 +21,7 @@ import {
 import type {
   AffixGroup,
   AffixKind,
+  AilmentId,
   DamageByType,
   DamageType,
   Dungeon,
@@ -252,6 +253,20 @@ const ARMOUR_MIT_CAP = 0.9
 /** Os quatro tipos que a resistência do alvo mitiga (físico usa armadura). */
 const ELEMENTAL_TYPES: DamageType[] = ['fire', 'cold', 'lightning', 'chaos']
 
+// Ailments/DoT (M3). Cada golpe com ailment gera dano-ao-longo-do-tempo do tipo
+// correspondente. Veneno empilha (soma as aplicações); sangramento/queimadura
+// refrescam (vale o stack mais forte, uptime pleno). Ver COMBAT §A2.
+const AILMENT_TYPE: Record<AilmentId, DamageType> = {
+  bleed: 'phys',
+  ignite: 'fire',
+  poison: 'chaos',
+}
+const AILMENT_STACKS: Record<AilmentId, boolean> = {
+  bleed: false,
+  ignite: false,
+  poison: true,
+}
+
 /** Faixas de `added{Tipo}` por StatKey, por tipo de dano (M1). */
 const ADDED_KEYS: Record<DamageType, [StatKey, StatKey]> = {
   phys: ['addedPhysMin', 'addedPhysMax'],
@@ -324,6 +339,8 @@ interface PreparedSkill {
   moreBase: number
   /** Penetração do herói por tipo elemental/caos. */
   pen: Record<DamageType, number>
+  /** DoT/s que um golpe aplica (M3), já com incDot; 0 se a skill não causa ailment. */
+  ailmentDpsBase: number
 }
 
 function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[]): PreparedSkill {
@@ -354,7 +371,16 @@ function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[
     lightning: skillMods.lightningPen ?? 0,
     chaos: skillMods.chaosPen ?? 0,
   }
-  return { def, actionTime, perHitByType, moreBase, pen }
+
+  // DoT/s que um golpe aplica (M3): fração do dano do golpe (do tipo do ailment)
+  // × (1 + incDot). A mitigação por resistência entra no tick, como no hit.
+  let ailmentDpsBase = 0
+  if (def.ailment) {
+    const at = AILMENT_TYPE[def.ailment]
+    const hitOfType = (perHitByType[at] ?? 0) * (1 + moreBase / 100)
+    ailmentDpsBase = hitOfType * (def.ailmentMult ?? 0) * (1 + (skillMods.incDot ?? 0) / 100)
+  }
+  return { def, actionTime, perHitByType, moreBase, pen, ailmentDpsBase }
 }
 
 /** Mitigação do alvo para um golpe de dano `raw` de um dado tipo. */
@@ -437,6 +463,11 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   const byType: DamageByType = {}
   const timeline: TickEvent[] = []
 
+  // DoT (M3): veneno empilha (soma dps×duração por aplicação); sangramento/
+  // queimadura refrescam (guarda o maior dps de stack, uptime pleno).
+  let poisonDamage = 0
+  const refreshBestDps: Partial<Record<AilmentId, number>> = {}
+
   const guardMax = Math.ceil(seconds / 0.05) + 16 // trava anti-loop (toda ação tem dt>0)
   let guard = 0
   while (t < seconds && guard++ < guardMax) {
@@ -470,6 +501,19 @@ export function simulateRotation(input: SimulateInput): RotationResult {
     total += dmg
     const parts = hitByType(chosen, target, empowered)
     for (const k of Object.keys(parts) as DamageType[]) byType[k] = (byType[k] ?? 0) + (parts[k] ?? 0)
+
+    // DoT (M3): golpe que aplica ailment. O dps de stack já traz o `more` do
+    // golpe; falta mitigar pela resistência do alvo (do tipo do ailment).
+    if (chosen.def.ailment && chosen.ailmentDpsBase > 0) {
+      const at = AILMENT_TYPE[chosen.def.ailment]
+      const stackDps = mitigateHit(at, chosen.ailmentDpsBase, target, chosen.pen[at])
+      if (AILMENT_STACKS[chosen.def.ailment]) {
+        poisonDamage += stackDps * (chosen.def.ailmentDuration ?? 0) // cada stack queima full duração
+      } else {
+        refreshBestDps[chosen.def.ailment] = Math.max(refreshBestDps[chosen.def.ailment] ?? 0, stackDps)
+      }
+    }
+
     resource = Math.min(resMax, resource - chosen.def.cost + regen * dt)
     if (chosen.def.cooldown > 0) readyAt[chosen.def.id] = t + chosen.def.cooldown
     if (chosen.def.applies) markExpiry[chosen.def.applies] = t + (chosen.def.appliesDuration ?? 0)
@@ -489,13 +533,36 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   }
 
   const window = t
+
+  // DoT total (M3): veneno acumulado + refresh (dps × janela). Some ao total e
+  // ao breakdown por tipo do ailment.
+  let dotDamage = poisonDamage
+  for (const k of Object.keys(refreshBestDps) as AilmentId[]) dotDamage += (refreshBestDps[k] ?? 0) * window
+  if (window > 0 && dotDamage > 0) {
+    total += dotDamage
+    if (poisonDamage > 0) byType.chaos = (byType.chaos ?? 0) + poisonDamage
+    for (const k of Object.keys(refreshBestDps) as AilmentId[]) {
+      const at = AILMENT_TYPE[k]
+      byType[at] = (byType[at] ?? 0) + (refreshBestDps[k] ?? 0) * window
+    }
+  }
+  const dotDps = window > 0 ? Math.round(dotDamage / window) : 0
+
   const dps = window > 0 ? Math.round(total / window) : 0
   const comboUptime = window > 0 ? clamp(markActiveTime / window, 0, 1) : 0
   const resourceUptime = actions > 0 ? clamp(1 - starvedActions / actions, 0, 1) : 1
 
-  const perSkill = Array.from(per.entries())
-    .map(([skillId, r]) => ({ skillId, casts: r.casts, damage: r.damage, share: total > 0 ? r.damage / total : 0 }))
-    .sort((a, b) => b.damage - a.damage)
+  const perEntries = Array.from(per.entries()).map(([skillId, r]) => ({
+    skillId,
+    casts: r.casts,
+    damage: r.damage,
+    share: total > 0 ? r.damage / total : 0,
+  }))
+  // O DoT aparece como uma "fonte" própria no breakdown por skill.
+  if (dotDamage > 0) {
+    perEntries.push({ skillId: 'dot', casts: 0, damage: dotDamage, share: total > 0 ? dotDamage / total : 0 })
+  }
+  const perSkill = perEntries.sort((a, b) => b.damage - a.damage)
 
   const hasPayoff = prepared.some((p) => p.def.empoweredBy != null)
   let bottleneck: RotationBottleneck = 'nenhum'
@@ -508,7 +575,18 @@ export function simulateRotation(input: SimulateInput): RotationResult {
     for (const k of Object.keys(byType) as DamageType[]) damageByType[k] = Math.round((byType[k] ?? 0) / window)
   }
 
-  return { dps, window, perSkill, comboUptime, resourceUptime, bottleneck, damageByType, timeline }
+  return {
+    dps,
+    window,
+    perSkill,
+    comboUptime,
+    resourceUptime,
+    bottleneck,
+    damageByType,
+    dotDps,
+    sourceDps: 0, // M4 preenche com minions/totens
+    timeline,
+  }
 }
 
 /** Janela (s) e alvo padrão da medição do DPS canônico (o "número descoberto"). */

@@ -339,6 +339,16 @@ export const AFFIX_GROUPS: AffixGroup[] = [
     ],
   },
   {
+    id: 'inc_dot',
+    name: 'Dano de DoT Aumentado',
+    kind: 'prefix',
+    classes: ['weapon', 'jewellery'],
+    tiers: [
+      { tier: 4, ranges: { incDot: [14, 24] }, text: '+{incDot}% dano de DoT aumentado', minItemLevel: 1 },
+      { tier: 2, ranges: { incDot: [34, 48] }, text: '+{incDot}% dano de DoT aumentado', minItemLevel: 50 },
+    ],
+  },
+  {
     id: 'elem_pen',
     name: 'Penetração Elemental',
     kind: 'suffix',
@@ -613,6 +623,43 @@ export const SKILLS: SkillDefinition[] = [
     comboMore: 40,
     defaultSockets: [],
   },
+  // ---- M3: ativas de ailment/DoT (arquétipos sangramento / veneno) ----
+  {
+    id: 'sk_rend',
+    name: 'Dilacerar',
+    type: 'atk',
+    glyph: '🩸',
+    tags: ['ataque', 'corpo-a-corpo', 'físico', 'sangramento', 'dot'],
+    meta: 'ATIVA · custo 10 · guiado pela vel. de ataque · aplica Sangramento',
+    desc: 'Um talho profundo que faz o alvo SANGRAR: além do golpe, causa dano físico ao longo do tempo (refresca a cada golpe).',
+    damageMult: 0.85,
+    cost: 10,
+    cooldown: 0,
+    castTime: 0,
+    ailment: 'bleed',
+    ailmentMult: 0.6,
+    ailmentDuration: 4,
+    defaultSockets: [],
+  },
+  {
+    id: 'sk_plague',
+    name: 'Toque Pestilento',
+    type: 'spell',
+    glyph: '☣',
+    tags: ['conjuração', 'caos', 'veneno', 'dot'],
+    meta: 'ATIVA · custo 12 · conj. 0.5s · aplica Veneno (empilha)',
+    desc: 'Inocula uma praga de CAOS que EMPILHA: cada aplicação soma um novo foco de veneno — escala com a cadência de golpes.',
+    damageMult: 0.5,
+    damageType: 'chaos',
+    baseDamage: { min: 18, max: 30 },
+    cost: 12,
+    cooldown: 0,
+    castTime: 0.5,
+    ailment: 'poison',
+    ailmentMult: 0.5,
+    ailmentDuration: 3,
+    defaultSockets: [],
+  },
 ]
 
 /**
@@ -660,6 +707,8 @@ export const SUPPORTS: SupportDefinition[] = [
   { id: 's_proj', name: 'Projétil Veloz', match: ['projétil'], note: '+12% dano', mods: { moreDamage: 12 } },
   // ---- M2: suporte defensivo (evasão/ES) ----
   { id: 's_ward', name: 'Salvaguarda', match: ['defesa', 'persistente'], note: '+15% evasão e ES', mods: { incEvasion: 15, incEnergyShield: 15 } },
+  // ---- M3: suporte de DoT ----
+  { id: 's_dot', name: 'Corrosão', match: ['dot'], note: '+25% dano de DoT', mods: { incDot: 25 } },
 ]
 
 export const BEHAVIOR: Array<{ when: string; then: string }> = [
@@ -684,6 +733,9 @@ export const TREE: PassiveTree = {
     { id: 'o3', x: 664, y: 262, type: 'notable', path: 'off', name: 'Carniceiro', stat: '+28% dano físico, +6% crítico', mods: { incPhys: 28, critChance: 6 } },
     { id: 'o4', x: 748, y: 232, type: 'small', path: 'off', name: 'Impiedade', stat: '+18% multi. de crítico', mods: { critMulti: 18 } },
     { id: 'o5', x: 812, y: 276, type: 'keystone', path: 'off', name: 'Coração de Brasa', stat: 'KEYSTONE: +40% dano, mas −15% vida', mods: { moreDamage: 40, incLife: -15 } },
+    // ---- M3: ramo de DoT ----
+    { id: 'o7', x: 700, y: 340, type: 'small', path: 'off', name: 'Ferida Aberta', stat: '+20% dano de DoT', mods: { incDot: 20 } },
+    { id: 'o8', x: 760, y: 380, type: 'notable', path: 'off', name: 'Praga Persistente', stat: '+40% dano de DoT', mods: { incDot: 40 } },
 
     { id: 'd1', x: 314, y: 352, type: 'small', path: 'def', name: 'Pele Dura', stat: '+140 armadura', mods: { armour: 140 } },
     { id: 'd2', x: 242, y: 394, type: 'small', path: 'def', name: 'Vigor', stat: '+80 vida máxima', mods: { flatLife: 80 } },
@@ -705,7 +757,7 @@ export const TREE: PassiveTree = {
     { id: 'u7', x: 588, y: 130, type: 'notable', path: 'util', name: 'Convergência Elemental', stat: '+30% dano elemental, +6% penetração', mods: { incElemental: 30, firePen: 6, coldPen: 6, lightningPen: 6 } },
   ],
   edges: [
-    ['s0', 'o1'], ['o1', 'o2'], ['o2', 'o3'], ['o3', 'o4'], ['o4', 'o5'], ['o1', 'o6'], ['o6', 'o3'],
+    ['s0', 'o1'], ['o1', 'o2'], ['o2', 'o3'], ['o3', 'o4'], ['o4', 'o5'], ['o1', 'o6'], ['o6', 'o3'], ['o3', 'o7'], ['o7', 'o8'],
     ['s0', 'd1'], ['d1', 'd2'], ['d2', 'd3'], ['d3', 'd4'], ['d4', 'd5'], ['d1', 'd6'], ['d6', 'd3'], ['d2', 'd7'], ['d7', 'd8'],
     ['s0', 'u1'], ['u1', 'u2'], ['u2', 'u3'], ['u3', 'u4'], ['u4', 'u5'], ['u2', 'u6'], ['u6', 'u7'],
   ],

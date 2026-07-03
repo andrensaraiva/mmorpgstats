@@ -73,6 +73,8 @@ export type StatKey =
   | 'incLightning'
   | 'incChaos'
   | 'incElemental'
+  // Dano de DoT/ailment aumentado (M3) — guarda-chuva de sangramento/queimadura/veneno.
+  | 'incDot'
   // Penetração da resistência do alvo por tipo (M1).
   | 'firePen'
   | 'coldPen'
@@ -206,6 +208,14 @@ export type SkillType = 'atk' | 'spell' | 'def' | 'aura'
 /** Marca/exposição temporária aplicada ao alvo — a moeda do combo setup→payoff. */
 export type MarkId = 'exposure'
 
+/**
+ * Ailments/DoT (M3). Cada um é um dano ao longo do tempo derivado do golpe:
+ * sangramento (físico), queimadura (fogo), veneno (caos). Veneno **empilha**
+ * (soma as aplicações); sangramento/queimadura **refrescam** (vale a mais forte
+ * recente). Ver COMBAT_AND_ARCHETYPES §A2. Mapa tipo/comportamento no engine.
+ */
+export type AilmentId = 'bleed' | 'ignite' | 'poison'
+
 export interface SkillDefinition {
   id: string
   name: string
@@ -244,6 +254,12 @@ export interface SkillDefinition {
   empoweredBy?: MarkId
   /** % de `more` de dano ganho enquanto a marca de `empoweredBy` está ativa. */
   comboMore?: number
+  /** Ailment/DoT que os golpes desta skill aplicam (M3). */
+  ailment?: AilmentId
+  /** Fração do dano do golpe (do tipo do ailment) que vira dano-por-segundo de DoT. */
+  ailmentMult?: number
+  /** Duração (s) do ailment aplicado. */
+  ailmentDuration?: number
   /** Suportes iniciais equipados. */
   defaultSockets: string[]
 }
@@ -298,6 +314,10 @@ export interface RotationResult {
   bottleneck: RotationBottleneck
   /** DPS por tipo de dano (M1) — para a leitura elemental/físico do boneco. */
   damageByType: DamageByType
+  /** DPS de DoT/ailment (M3), já incluído no `dps`. Parcela contínua. */
+  dotDps: number
+  /** DPS de fontes externas (M4): minions + totens/balista, já incluído no `dps`. */
+  sourceDps: number
   /** Linha do tempo (opcional). */
   timeline?: TickEvent[]
 }

@@ -4686,3 +4686,9 @@ a {
   vertical-align: middle;
   white-space: nowrap;
 }
+.type-tag + .type-tag {
+  margin-left: 4px;
+}
+.ailment-tag {
+  color: #b06be0;
+}

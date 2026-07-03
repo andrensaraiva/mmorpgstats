@@ -17,7 +17,11 @@ import { Panel, PowerBar } from './atoms'
 import { fmtInt } from './format'
 
 const skillName = (id: string) =>
-  id === BASIC_ATTACK.id ? BASIC_ATTACK.name : SKILLS.find((s) => s.id === id)?.name ?? id
+  id === 'dot'
+    ? 'DoT (ao longo do tempo)'
+    : id === BASIC_ATTACK.id
+      ? BASIC_ATTACK.name
+      : SKILLS.find((s) => s.id === id)?.name ?? id
 
 const TYPE_LABEL: Record<DamageType, string> = {
   phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
@@ -215,7 +219,7 @@ export function TrainingDummy({ game }: { game: Game }) {
                 <span className="ps-fill" style={{ width: `${pct}%` }} />
               </span>
               <span className="ps-val tiny muted">
-                {pct}% · {s.casts}×
+                {pct}% · {s.skillId === 'dot' ? 'contínuo' : `${s.casts}×`}
               </span>
             </div>
           )
