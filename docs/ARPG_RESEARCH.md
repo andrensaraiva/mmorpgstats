@@ -86,7 +86,7 @@ O combate assíncrono + autoridade do servidor + loot por relatório **resolve d
 
 ### 6.1 Itemização
 - Manter a filosofia **trade-off > número maior** (PoE), com **defesas/qualidade/requisitos** ricos (paridade PoE2, já em [EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)).
-- Adotar um equivalente a **greater affixes** (afixo "excepcional") como topo aspiracional que **só dropa** — dá caça a gear, não só a moeda (corrige a crítica ao PoE2).
+- ✅ **IMPLEMENTADO (03/jul).** Adotado o equivalente a **greater affixes** — o afixo **excepcional** (`RolledAffix.exceptional`): ~1,5× o topo do melhor tier (`EXCEPTIONAL_MULT`/`rollExceptionalAffix`), **NÃO craftável** (o `craft` nunca o gera; o `divine` o preserva), só cai de encontros (`makeRewardItem(..., withExceptional)`). A campanha concede loot garantido por marco, com o **ato final sempre trazendo um excepcional** e os demais com chance crescente. Destacado no tooltip (dourado, selo `EXC`/✦). Dá caça a gear, não só a moeda.
 
 ### 6.2 Crafting — dois trilhos (agrada os dois públicos)
 - **Trilho gamble** (já temos): orbes + corrupção Vaal (emoção/topo).

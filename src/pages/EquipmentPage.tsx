@@ -412,8 +412,8 @@ function ItemModList({ item, craft }: { item: ItemInstance; craft?: LastCraft | 
           )
         }
         return (
-          <div className={`it-aff${flag ? ` aff-${flag}` : ''}`} key={i}>
-            <span className="t">{a.kind === 'prefix' ? 'P' : 'S'}·T{a.tier}</span> {a.text}
+          <div className={`it-aff${flag ? ` aff-${flag}` : ''}${a.exceptional ? ' it-exc' : ''}`} key={i}>
+            <span className="t">{a.exceptional ? 'EXC' : `${a.kind === 'prefix' ? 'P' : 'S'}·T${a.tier}`}</span> {a.text}
             {flag ? <span className={`aff-badge aff-badge--${flag}`}>{changeLabel[change]}</span> : null}
           </div>
         )

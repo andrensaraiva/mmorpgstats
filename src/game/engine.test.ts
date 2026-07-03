@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AFFIX_GROUPS,
   DUNGEONS,
   MAIN_SKILL_ID,
   SKILLS,
@@ -16,12 +17,15 @@ import {
   dungeonOutcome,
   dungeonReplay,
   dungeonXp,
+  EXCEPTIONAL_MULT,
   fingerprint,
   levelForXp,
   levelProgress,
+  makeRewardItem,
   makeRng,
   measuredRotation,
   resolveItemMods,
+  rollExceptionalAffix,
   simulateDungeon,
   simulateRotation,
   skillAvailability,
@@ -709,6 +713,51 @@ describe('P1 — progressão (XP / nível)', () => {
     expect(dungeonXp(10, true)).toBeGreaterThan(dungeonXp(10, false, 1))
     expect(dungeonXp(20, true)).toBeGreaterThan(dungeonXp(5, true))
     expect(dungeonXp(10, false, 0)).toBe(0) // perdeu sem limpar nada
+  })
+})
+
+describe('IT — afixo excepcional (só-dropa)', () => {
+  const lifeGroup = AFFIX_GROUPS.find((g) => g.id === 'flat_life')!
+
+  it('excepcional é ~1.5× o topo do melhor tier e vem marcado', () => {
+    const exc = rollExceptionalAffix(lifeGroup, 80)
+    const best = lifeGroup.tiers.reduce((a, b) => (b.tier < a.tier ? b : a))
+    const topNormal = best.ranges.flatLife![1]
+    expect(exc.exceptional).toBe(true)
+    expect(exc.values.flatLife).toBe(Math.round(topNormal * EXCEPTIONAL_MULT))
+    expect(exc.text).toMatch(/✦/) // selo de excepcional
+  })
+
+  it('o crafting nunca gera afixo excepcional', () => {
+    // Rerolla um item raro muitas vezes; nenhum afixo deve sair excepcional.
+    const rng = makeRng(12345)
+    let item = makeRewardItem('plate_chest', 'rare', 'Teste', 60, rng, false)
+    for (let i = 0; i < 40; i++) {
+      const r = craft('chaos', item, rng)
+      if (r.ok) item = r.item
+      expect(item.affixes.some((a) => a.exceptional)).toBe(false)
+    }
+  })
+
+  it('makeRewardItem com excepcional injeta um afixo excepcional; sem, nenhum', () => {
+    const rng = makeRng(999)
+    const plain = makeRewardItem('plate_chest', 'rare', 'Comum', 60, rng, false)
+    const fancy = makeRewardItem('plate_chest', 'rare', 'Excepcional', 60, rng, true)
+    expect(plain.affixes.some((a) => a.exceptional)).toBe(false)
+    expect(fancy.affixes.some((a) => a.exceptional)).toBe(true)
+  })
+
+  it('o divine preserva o afixo excepcional (não reroda seus valores)', () => {
+    const rng = makeRng(7)
+    const item = makeRewardItem('plate_chest', 'rare', 'Exc', 60, rng, true)
+    const excBefore = item.affixes.find((a) => a.exceptional)!
+    const divined = craft('divine', item, rng)
+    expect(divined.ok).toBe(true)
+    if (divined.ok) {
+      const excAfter = divined.item.affixes.find((a) => a.exceptional)
+      expect(excAfter).toBeTruthy()
+      expect(excAfter!.values).toEqual(excBefore.values) // valores intactos
+    }
   })
 })
 

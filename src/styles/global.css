@@ -4830,3 +4830,17 @@ a {
   color: var(--blood-hi);
   font-weight: 700;
 }
+
+/* afixo EXCEPCIONAL só-dropa (IT) — a camada aspiracional, realçada */
+.it-exc {
+  color: #ffb454 !important;
+  text-shadow: 0 0 10px rgb(255 160 60 / 45%);
+  font-weight: 700;
+}
+.it-exc .t {
+  color: #7a2e0a;
+  background: #ffb454;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-weight: 900;
+}

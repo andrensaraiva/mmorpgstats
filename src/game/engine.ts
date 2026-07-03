@@ -1179,6 +1179,32 @@ function rollAffix(group: AffixGroup, itemLevel: number, rng: Rng): RolledAffix 
   return { groupId: group.id, kind: group.kind, tier: tier.tier, values, text: affixText(tier.text, values) }
 }
 
+/** Multiplicador de um afixo excepcional sobre o topo do tier normal (só-dropa). */
+export const EXCEPTIONAL_MULT = 1.5
+
+/**
+ * Afixo EXCEPCIONAL de um grupo: valores no topo do melhor tier × EXCEPTIONAL_MULT,
+ * marcado `exceptional`. Não é craftável — só o gerador de drop o cria. O texto
+ * ganha um selo ✦ para leitura imediata. Ver ARPG_RESEARCH §8.5.
+ */
+export function rollExceptionalAffix(group: AffixGroup, itemLevel: number): RolledAffix {
+  const tiers = group.tiers.filter((t) => t.minItemLevel <= itemLevel)
+  const best = tiers.reduce((a, b) => (b.tier < a.tier ? b : a), tiers[0]) // menor tier = mais forte
+  const values: StatMods = {}
+  for (const key of Object.keys(best.ranges) as StatKey[]) {
+    const [, hi] = best.ranges[key]!
+    values[key] = Math.round(hi * EXCEPTIONAL_MULT)
+  }
+  return {
+    groupId: group.id,
+    kind: group.kind,
+    tier: 0,
+    values,
+    text: `✦ ${affixText(best.text, values)}`,
+    exceptional: true,
+  }
+}
+
 const RARITY_CAP: Record<Rarity, number> = { common: 0, magic: 1, rare: 3, unique: 0 }
 
 function countKind(affixes: RolledAffix[], kind: AffixKind): number {
@@ -1330,6 +1356,43 @@ export function craft(orb: string, item: ItemInstance, rng: Rng): CraftResult {
     default:
       return { ok: false, message: 'Orbe desconhecido.' }
   }
+}
+
+/**
+ * Gera um item de recompensa (drop) a partir de uma base. Com `withExceptional`,
+ * injeta um afixo EXCEPCIONAL (só-dropa) elegível — a camada aspiracional que o
+ * crafting não alcança. Puro/determinístico via Rng. Ver ARPG_RESEARCH §8.5.
+ */
+export function makeRewardItem(
+  baseId: string,
+  rarity: Rarity,
+  name: string,
+  itemLevel: number,
+  rng: Rng,
+  withExceptional = false,
+): ItemInstance {
+  const base = getBase(baseId)
+  const affixes: RolledAffix[] = []
+  const cap = RARITY_CAP[rarity]
+  for (let i = 0; i < cap; i++) addAffixOfKind(affixes, base, itemLevel, 'prefix', rng)
+  for (let i = 0; i < cap; i++) addAffixOfKind(affixes, base, itemLevel, 'suffix', rng)
+
+  if (withExceptional) {
+    // Substitui um afixo por sua versão excepcional (ou adiciona, se houver espaço).
+    const used = new Set(affixes.map((a) => a.groupId))
+    const candidates = AFFIX_GROUPS.filter(
+      (g) => g.classes.includes(base.itemClass) && g.tiers.some((t) => t.minItemLevel <= itemLevel),
+    )
+    const group = candidates.find((g) => used.has(g.id)) ?? candidates[0]
+    if (group) {
+      const exc = rollExceptionalAffix(group, itemLevel)
+      const idx = affixes.findIndex((a) => a.groupId === group.id)
+      if (idx >= 0) affixes[idx] = exc
+      else affixes.push(exc)
+    }
+  }
+
+  return { uid: nextUid(), baseId, rarity, itemLevel, affixes, corrupted: false, name }
 }
 
 /* ---------- árvore: utilidades puras ---------- */

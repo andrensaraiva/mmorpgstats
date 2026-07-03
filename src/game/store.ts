@@ -169,6 +169,7 @@ type Action =
   | { type: 'dismissToast'; id: number }
   | { type: 'completeCampaignNode'; nodeId: string }
   | { type: 'campaignReward'; xpGained: number; measured: Measured | null }
+  | { type: 'addItem'; item: ItemInstance; toast?: string; tone?: ToastTone }
 
 const adjacency = treeAdjacency()
 
@@ -368,6 +369,11 @@ function reducer(state: GameState, action: Action): GameState {
       if (gained > 0) toasts = withToast(toasts, 'good', `+${gained.toLocaleString('pt-BR')} XP`)
       if (after > before) toasts = withToast(toasts, 'loot', `⬆ Nível ${after}!`)
       return { ...state, xp, measured: action.measured ?? state.measured, toasts }
+    }
+
+    case 'addItem': {
+      const toasts = action.toast ? withToast(state.toasts, action.tone ?? 'loot', action.toast) : state.toasts
+      return { ...state, inventory: [action.item, ...state.inventory], toasts }
     }
 
     case 'completeCampaignNode': {

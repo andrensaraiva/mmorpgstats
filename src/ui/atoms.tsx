@@ -272,8 +272,8 @@ export function ItemTooltipBody({ item, hero }: { item: ItemInstance; hero?: Her
             {a.text}
           </div>
         ) : (
-          <div className="it-aff" key={i}>
-            <span className="t">{a.kind === 'prefix' ? 'P' : 'S'}·T{a.tier}</span> {a.text}
+          <div className={`it-aff${a.exceptional ? ' it-exc' : ''}`} key={i}>
+            <span className="t">{a.exceptional ? 'EXC' : `${a.kind === 'prefix' ? 'P' : 'S'}·T${a.tier}`}</span> {a.text}
           </div>
         ),
       )}

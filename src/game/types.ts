@@ -226,6 +226,11 @@ export interface RolledAffix {
   tier: number
   values: StatMods
   text: string
+  /**
+   * Afixo EXCEPCIONAL (só-dropa): ~1.5× o topo do normal, NÃO craftável — só cai
+   * de encontros (a camada aspiracional de caça a gear). Ver ARPG_RESEARCH §8.5.
+   */
+  exceptional?: boolean
 }
 
 /* ---------- instância de item ---------- */
