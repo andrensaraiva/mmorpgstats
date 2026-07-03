@@ -10,6 +10,7 @@
 
 import {
   AFFIX_GROUPS,
+  BASIC_ATTACK,
   BESTIARY,
   MAIN_SKILL_ID,
   SKILLS,
@@ -28,13 +29,20 @@ import type {
   ItemBase,
   ItemInstance,
   MarkerKind,
+  MarkId,
   Monster,
   Power,
   Rarity,
   ReplayMarker,
   RolledAffix,
+  RotationBottleneck,
+  RotationResult,
+  SkillDefinition,
+  SkillSlot,
   StatKey,
   StatMods,
+  TargetProfile,
+  TickEvent,
   TreeNode,
 } from './types'
 
@@ -94,6 +102,7 @@ export function slotAccepts(base: ItemBase, slot: EquipSlot): boolean {
 /* ===================== POWER MODEL ===================== */
 
 const supportById = Object.fromEntries(SUPPORTS.map((s) => [s.id, s]))
+const skillById = Object.fromEntries(SKILLS.map((s) => [s.id, s])) as Record<string, SkillDefinition>
 const nodeById = Object.fromEntries(TREE.nodes.map((n) => [n.id, n])) as Record<string, TreeNode>
 const mainSkill = SKILLS.find((s) => s.id === MAIN_SKILL_ID)!
 
@@ -102,16 +111,36 @@ const ARMOUR_K = 1500
 const RES_CAP = 75
 const RES_FLOOR = -60
 
+// Recurso do herói (mana/energia). R1: constantes (placeholder). Depois deriva
+// de atributos/afixos, conforme COMBAT_AND_ARCHETYPES §A0.
+const RESOURCE_MAX = 100
+const RESOURCE_REGEN = 10
+
+function deriveResource(_global: StatMods): { max: number; regen: number } {
+  return { max: RESOURCE_MAX, regen: RESOURCE_REGEN }
+}
+
 export interface AggregateInput {
   equipped: ItemInstance[]
   allocated: Set<string> | string[]
   sockets: Record<string, string[]>
 }
 
-export function aggregate({ equipped, allocated, sockets }: AggregateInput): Power {
-  const alloc = Array.isArray(allocated) ? allocated : Array.from(allocated)
+/**
+ * Contexto de combate da build **sem** os suportes de skill: arma + mods
+ * globais (equipamento + árvore). O `aggregate` (golpe principal) e o
+ * `simulateRotation` (loadout inteiro) consomem isto e sobrepõem, cada um,
+ * os suportes da sua habilidade.
+ */
+interface BuildContext {
+  weaponPhysMin: number
+  weaponPhysMax: number
+  weaponAps: number
+  global: StatMods
+}
 
-  // Mods globais: equipamento + árvore.
+function buildContext(equipped: ItemInstance[], allocated: Set<string> | string[]): BuildContext {
+  const alloc = Array.isArray(allocated) ? allocated : Array.from(allocated)
   const global: StatMods = {}
   let weaponPhysMin = 2
   let weaponPhysMax = 6
@@ -126,6 +155,12 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
     addMods(global, resolveItemMods(item))
   }
   for (const id of alloc) addMods(global, nodeById[id]?.mods)
+  return { weaponPhysMin, weaponPhysMax, weaponAps, global }
+}
+
+export function aggregate({ equipped, allocated, sockets }: AggregateInput): Power {
+  const ctx = buildContext(equipped, allocated)
+  const { global } = ctx
 
   // Mods específicos do golpe principal (suportes só valem na habilidade).
   // `more`/`less` são multiplicativos e ficam à parte; skillMods só carrega os
@@ -141,10 +176,10 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
     moreDamage += sup.mods.moreDamage ?? 0
   }
 
-  const physMin = weaponPhysMin + (skillMods.addedPhysMin ?? 0)
-  const physMax = weaponPhysMax + (skillMods.addedPhysMax ?? 0)
+  const physMin = ctx.weaponPhysMin + (skillMods.addedPhysMin ?? 0)
+  const physMax = ctx.weaponPhysMax + (skillMods.addedPhysMax ?? 0)
   const avgHit = ((physMin + physMax) / 2) * (1 + (skillMods.incPhys ?? 0) / 100)
-  const attackSpeed = weaponAps * (1 + (skillMods.incAttackSpeed ?? 0) / 100)
+  const attackSpeed = ctx.weaponAps * (1 + (skillMods.incAttackSpeed ?? 0) / 100)
   const critChance = clamp(5 + (skillMods.critChance ?? 0), 0, 100)
   const critMulti = 150 + (skillMods.critMulti ?? 0)
   const critFactor = 1 + (critChance / 100) * (critMulti / 100 - 1)
@@ -162,6 +197,7 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
   const armour = global.armour ?? 0
   const armourMit = armour / (armour + ARMOUR_K)
   const ehp = Math.round(life * (1 + armourMit))
+  const resource = deriveResource(global)
 
   return {
     dps: Math.round(dps),
@@ -180,7 +216,173 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
     dexterity: global.dexterity ?? 0,
     intelligence: global.intelligence ?? 0,
     supportCap: 2 + (global.supportCap ?? 0),
+    resourceMax: resource.max,
+    resourceRegen: resource.regen,
   }
+}
+
+/* ===================== SIMULADOR DE ROTAÇÃO (fatia do M5) ===================== */
+/*
+   Executa o loadout no tempo (recurso + cooldown + cast + combo setup→payoff)
+   e devolve o DPS medido + diagnóstico. Determinístico: o crítico entra por
+   valor esperado (sem RNG), então a mesma build+rotação+alvo dá sempre o mesmo
+   número — preservando a mecânica de "números descobertos".
+   Ver docs/COMBAT_ROTATION_AND_DUMMY.md §4.
+*/
+
+// COMBAT §A2: redução = Armadura / (Armadura + 12 × dano_do_golpe). Golpe grande
+// fura a armadura; golpe pequeno é mitigado (trade-off real).
+const ARMOUR_HIT_K = 12
+const ARMOUR_MIT_CAP = 0.9
+
+/** Uma skill do loadout já "compilada" para o loop (dano/tempo pré-calculados). */
+interface PreparedSkill {
+  def: SkillDefinition
+  /** Tempo de uma ação (s): cast fixo, ou 1/vel.ataque para ataques. */
+  actionTime: number
+  /** Golpe médio SEM o `more` (avgHit × crítico × mult × (1−less)). */
+  perHitBase: number
+  /** `more` de global + suportes (sem o bônus de combo). */
+  moreBase: number
+}
+
+function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[]): PreparedSkill {
+  const skillMods: StatMods = { ...ctx.global }
+  let moreBase = ctx.global.moreDamage ?? 0
+  const lessDamage = ctx.global.lessDamage ?? 0
+  for (const sid of supports) {
+    const sup = supportById[sid]
+    if (!sup) continue
+    addMods(skillMods, sup.mods)
+    moreBase += sup.mods.moreDamage ?? 0
+  }
+  const physMin = ctx.weaponPhysMin + (skillMods.addedPhysMin ?? 0)
+  const physMax = ctx.weaponPhysMax + (skillMods.addedPhysMax ?? 0)
+  const avgHit = ((physMin + physMax) / 2) * (1 + (skillMods.incPhys ?? 0) / 100)
+  const critChance = clamp(5 + (skillMods.critChance ?? 0), 0, 100)
+  const critMulti = 150 + (skillMods.critMulti ?? 0)
+  const critFactor = 1 + (critChance / 100) * (critMulti / 100 - 1)
+  const attackSpeed = ctx.weaponAps * (1 + (skillMods.incAttackSpeed ?? 0) / 100)
+  const actionTime = def.castTime > 0 ? def.castTime : 1 / attackSpeed
+  const perHitBase = avgHit * critFactor * def.damageMult * (1 - lessDamage / 100)
+  return { def, actionTime, perHitBase, moreBase }
+}
+
+/** Dano de um golpe da skill contra a armadura do alvo, com/sem combo ativo. */
+function preparedHit(p: PreparedSkill, targetArmour: number, empowered: boolean): number {
+  const more = p.moreBase + (empowered ? p.def.comboMore ?? 0 : 0)
+  const raw = p.perHitBase * (1 + more / 100)
+  if (targetArmour <= 0 || raw <= 0) return raw
+  const reduction = Math.min(ARMOUR_MIT_CAP, targetArmour / (targetArmour + ARMOUR_HIT_K * raw))
+  return raw * (1 - reduction)
+}
+
+export interface SimulateInput {
+  equipped: ItemInstance[]
+  allocated: Set<string> | string[]
+  /** Ativas escolhidas, em ordem de prioridade (a rotação). */
+  loadout: SkillSlot[]
+  /** O boneco de treino. */
+  target: TargetProfile
+  /** Janela de medição (s). */
+  seconds: number
+}
+
+/**
+ * Simula a rotação e mede o DPS. Puro e determinístico. Cada ação: escolhe a
+ * skill de maior prioridade que esteja fora de cooldown e paga o recurso;
+ * senão, cai no ataque básico (grátis) — nunca trava. Aplica combo (marca),
+ * consome recurso, dispara cooldown e soma o dano; ao fim, DPS = dano/tempo.
+ */
+export function simulateRotation(input: SimulateInput): RotationResult {
+  const { equipped, allocated, loadout, target, seconds } = input
+  const ctx = buildContext(equipped, allocated)
+  const { max: resMax, regen } = deriveResource(ctx.global)
+
+  // Só skills de dano entram na rotação; utilitárias (damageMult 0) são ignoradas.
+  const prepared = loadout
+    .map((slot) => prepareSkill(ctx, skillById[slot.skillId] ?? BASIC_ATTACK, slot.supports))
+    .filter((p) => p.def.damageMult > 0)
+  const basic = prepareSkill(ctx, BASIC_ATTACK, [])
+
+  let t = 0
+  let resource = resMax
+  const readyAt: Record<string, number> = {}
+  const markExpiry: Partial<Record<MarkId, number>> = {}
+
+  let total = 0
+  let markActiveTime = 0
+  let starvedActions = 0
+  let basicActions = 0
+  let actions = 0
+  const per = new Map<string, { casts: number; damage: number }>()
+  const timeline: TickEvent[] = []
+
+  const guardMax = Math.ceil(seconds / 0.05) + 16 // trava anti-loop (toda ação tem dt>0)
+  let guard = 0
+  while (t < seconds && guard++ < guardMax) {
+    // Escolhe a ação por prioridade (ordem do loadout).
+    let chosen: PreparedSkill | null = null
+    let costBlocked = false
+    for (const p of prepared) {
+      if (t < (readyAt[p.def.id] ?? 0)) continue // em cooldown
+      if (resource < p.def.cost) {
+        costBlocked = true // pronta no cooldown, mas sem recurso
+        continue
+      }
+      chosen = p
+      break
+    }
+    const isBasic = !chosen
+    if (!chosen) chosen = basic
+
+    const mark = chosen.def.empoweredBy
+    const empowered = mark != null && (markExpiry[mark] ?? 0) > t
+    const dt = chosen.actionTime
+    const dmg = preparedHit(chosen, target.armour, empowered)
+
+    // Uptime da marca durante [t, t+dt] (antes de reaplicar).
+    for (const m of Object.keys(markExpiry) as MarkId[]) {
+      const exp = markExpiry[m] ?? 0
+      if (exp > t) markActiveTime += Math.min(exp, t + dt) - t
+    }
+
+    // Aplica efeitos.
+    total += dmg
+    resource = Math.min(resMax, resource - chosen.def.cost + regen * dt)
+    if (chosen.def.cooldown > 0) readyAt[chosen.def.id] = t + chosen.def.cooldown
+    if (chosen.def.applies) markExpiry[chosen.def.applies] = t + (chosen.def.appliesDuration ?? 0)
+
+    const rec = per.get(chosen.def.id) ?? { casts: 0, damage: 0 }
+    rec.casts += 1
+    rec.damage += dmg
+    per.set(chosen.def.id, rec)
+    timeline.push({ t, skillId: chosen.def.id, damage: dmg, empowered, starved: costBlocked })
+
+    // Rebaixamento por recurso: uma skill pronta (fora de cooldown) foi pulada
+    // por falta de recurso — quer tenha caído no básico, quer numa skill mais barata.
+    if (costBlocked) starvedActions += 1
+    if (isBasic) basicActions += 1
+    actions += 1
+    t += dt
+  }
+
+  const window = t
+  const dps = window > 0 ? Math.round(total / window) : 0
+  const comboUptime = window > 0 ? clamp(markActiveTime / window, 0, 1) : 0
+  const resourceUptime = actions > 0 ? clamp(1 - starvedActions / actions, 0, 1) : 1
+
+  const perSkill = Array.from(per.entries())
+    .map(([skillId, r]) => ({ skillId, casts: r.casts, damage: r.damage, share: total > 0 ? r.damage / total : 0 }))
+    .sort((a, b) => b.damage - a.damage)
+
+  const hasPayoff = prepared.some((p) => p.def.empoweredBy != null)
+  let bottleneck: RotationBottleneck = 'nenhum'
+  if (resourceUptime < 0.85) bottleneck = 'recurso'
+  else if (hasPayoff && comboUptime < 0.7) bottleneck = 'combo'
+  else if (prepared.length > 0 && basicActions > actions * 0.15) bottleneck = 'cooldown'
+
+  return { dps, window, perSkill, comboUptime, resourceUptime, bottleneck, timeline }
 }
 
 /** Dano relativo de uma habilidade dada sua lista de suportes. */

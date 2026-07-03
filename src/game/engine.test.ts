@@ -16,6 +16,7 @@ import {
   fingerprint,
   makeRng,
   resolveItemMods,
+  simulateRotation,
 } from './engine'
 import type { ItemInstance } from './types'
 
@@ -256,10 +257,99 @@ describe('connectedToStart', () => {
   })
 })
 
+describe('simulateRotation (simulador de rotação — fatia do M5)', () => {
+  const supportsOf = (id: string) => SKILLS.find((s) => s.id === id)!.defaultSockets.slice()
+
+  it('reduz ao DPS do aggregate para a skill principal sozinha, sem armadura', () => {
+    const { equipped } = starterEquipped()
+    const mainSupports = supportsOf(MAIN_SKILL_ID)
+    const power = aggregate({ equipped, allocated: ['s0'], sockets: { [MAIN_SKILL_ID]: mainSupports } })
+    const sim = simulateRotation({
+      equipped,
+      allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: mainSupports }],
+      target: { armour: 0 },
+      seconds: 8,
+    })
+    // Mesma matemática por golpe × velocidade → mesmo DPS (a menos de arredondamento).
+    expect(Math.abs(sim.dps - power.dps)).toBeLessThanOrEqual(1)
+    expect(sim.resourceUptime).toBe(1) // strike sozinho não estoura recurso na janela
+  })
+
+  it('a ordem da rotação importa: setup antes do payoff rende mais DPS e mantém o combo', () => {
+    const { equipped } = starterEquipped()
+    const wave = { skillId: 'sk_wave', supports: supportsOf('sk_wave') }
+    const strike = { skillId: 'sk_strike', supports: supportsOf('sk_strike') }
+    const cfg = { equipped, allocated: ['s0'], target: { armour: 0 }, seconds: 10 }
+
+    const good = simulateRotation({ ...cfg, loadout: [wave, strike] }) // setup primeiro
+    const bad = simulateRotation({ ...cfg, loadout: [strike, wave] }) // fura o setup
+
+    expect(good.dps).toBeGreaterThan(bad.dps)
+    expect(good.comboUptime).toBeGreaterThan(0.7)
+    expect(bad.comboUptime).toBeLessThan(0.05) // Onda nunca é usada → Exposição nunca abre
+  })
+
+  it('rotação gulosa estoura o recurso: aponta o gargalo "recurso"', () => {
+    const { equipped } = starterEquipped()
+    const starve = simulateRotation({
+      equipped,
+      allocated: ['s0'],
+      loadout: [
+        { skillId: 'sk_wave', supports: supportsOf('sk_wave') },
+        { skillId: 'sk_strike', supports: supportsOf('sk_strike') },
+      ],
+      target: { armour: 0 },
+      seconds: 60,
+    })
+    expect(starve.resourceUptime).toBeLessThan(1)
+    expect(starve.bottleneck).toBe('recurso')
+  })
+
+  it('mais armadura no alvo derruba o DPS (armadura dependente do tamanho do golpe)', () => {
+    const { equipped } = starterEquipped()
+    const loadout = [{ skillId: MAIN_SKILL_ID, supports: supportsOf(MAIN_SKILL_ID) }]
+    const soft = simulateRotation({ equipped, allocated: ['s0'], loadout, target: { armour: 0 }, seconds: 8 })
+    const hard = simulateRotation({ equipped, allocated: ['s0'], loadout, target: { armour: 5000 }, seconds: 8 })
+    expect(hard.dps).toBeLessThan(soft.dps)
+    expect(hard.dps).toBeGreaterThan(0)
+  })
+
+  it('é determinístico: mesma entrada → mesma saída', () => {
+    const { equipped } = starterEquipped()
+    const cfg = {
+      equipped,
+      allocated: ['s0'],
+      loadout: [
+        { skillId: 'sk_wave', supports: supportsOf('sk_wave') },
+        { skillId: 'sk_strike', supports: supportsOf('sk_strike') },
+      ],
+      target: { armour: 800 },
+      seconds: 12,
+    }
+    expect(simulateRotation(cfg)).toEqual(simulateRotation(cfg))
+  })
+
+  it('ignora skills utilitárias (damageMult 0) na medição de DPS, caindo no básico', () => {
+    const { equipped } = starterEquipped()
+    const sim = simulateRotation({
+      equipped,
+      allocated: ['s0'],
+      loadout: [{ skillId: 'sk_stance', supports: supportsOf('sk_stance') }],
+      target: { armour: 0 },
+      seconds: 6,
+    })
+    expect(sim.dps).toBeGreaterThan(0)
+    expect(sim.perSkill.every((s) => s.skillId === 'sk_basic')).toBe(true)
+    expect(sim.comboUptime).toBe(0)
+  })
+})
+
 function basePower() {
   return {
     dps: 300, ehp: 8000, life: 6000, armour: 500, block: 20, attackSpeed: 1.4,
     critChance: 20, critMulti: 180, fireRes: 40, coldRes: 40, litRes: 40, chaosRes: 40,
     strength: 200, dexterity: 40, intelligence: 40, supportCap: 2,
+    resourceMax: 100, resourceRegen: 10,
   }
 }

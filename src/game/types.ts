@@ -178,6 +178,9 @@ export type CurrencyPouch = Record<OrbId, number>
 
 export type SkillType = 'atk' | 'spell' | 'def' | 'aura'
 
+/** Marca/exposição temporária aplicada ao alvo — a moeda do combo setup→payoff. */
+export type MarkId = 'exposure'
+
 export interface SkillDefinition {
   id: string
   name: string
@@ -186,10 +189,79 @@ export interface SkillDefinition {
   tags: string[]
   meta: string
   desc: string
-  /** Multiplicador de dano da habilidade (0 = utilitária). */
+  /** Multiplicador de dano da habilidade (0 = utilitária, ignorada pela sim de DPS). */
   damageMult: number
+  /** Custo de recurso por uso (0 = grátis). */
+  cost: number
+  /** Recarga em segundos (0 = sem cooldown). */
+  cooldown: number
+  /**
+   * Tempo base de execução (s). `0` = ataque guiado pela velocidade de ataque
+   * da build (o motor usa 1/vel.ataque); `>0` = conjuração de duração fixa.
+   */
+  castTime: number
+  /** Combo (setup): marca que a skill aplica no alvo ao ser usada. */
+  applies?: MarkId
+  /** Duração (s) da marca aplicada por `applies`. */
+  appliesDuration?: number
+  /** Combo (payoff): marca que empodera esta skill enquanto estiver ativa no alvo. */
+  empoweredBy?: MarkId
+  /** % de `more` de dano ganho enquanto a marca de `empoweredBy` está ativa. */
+  comboMore?: number
   /** Suportes iniciais equipados. */
   defaultSockets: string[]
+}
+
+/**
+ * Uma ativa no loadout de combate: a skill + seus suportes soquetados.
+ * A ordem no array é a **prioridade** da rotação (o motor escolhe a primeira
+ * que estiver pronta a cada ação).
+ */
+export interface SkillSlot {
+  skillId: string
+  supports: string[]
+}
+
+/** O boneco de treino: as defesas do alvo contra as quais o DPS é medido. */
+export interface TargetProfile {
+  /** Armadura do alvo — mitiga físico (dependente do tamanho do golpe). */
+  armour: number
+  /** Resistências do alvo por tipo (prontas para o M1; hoje o dano é só físico). */
+  fireRes?: number
+  coldRes?: number
+  litRes?: number
+  chaosRes?: number
+}
+
+/** O limitador dominante do DPS de uma rotação (diagnóstico do boneco). */
+export type RotationBottleneck = 'recurso' | 'cooldown' | 'combo' | 'nenhum'
+
+/** Um evento na linha do tempo da simulação (opcional, p/ debug/visual). */
+export interface TickEvent {
+  t: number
+  skillId: string
+  damage: number
+  empowered: boolean
+  /** Caiu no ataque básico por falta de recurso. */
+  starved: boolean
+}
+
+/** Saída do simulador de rotação — o DPS medido + o diagnóstico exibido no boneco. */
+export interface RotationResult {
+  /** DPS medido pela simulação (alimenta a mecânica de números descobertos). */
+  dps: number
+  /** Segundos efetivamente simulados. */
+  window: number
+  /** Dano e usos por skill (inclui o ataque básico de fallback), maior→menor. */
+  perSkill: Array<{ skillId: string; casts: number; damage: number; share: number }>
+  /** Fração do tempo (0–1) com a marca de combo ativa. */
+  comboUptime: number
+  /** Fração das ações (0–1) que não caíram no básico por falta de recurso. */
+  resourceUptime: number
+  /** O limitador dominante do DPS. */
+  bottleneck: RotationBottleneck
+  /** Linha do tempo (opcional). */
+  timeline?: TickEvent[]
 }
 
 export interface SupportDefinition {
@@ -358,6 +430,10 @@ export interface Power {
   dexterity: number
   intelligence: number
   supportCap: number
+  /** Recurso máximo (mana/energia) que custeia as skills da rotação. */
+  resourceMax: number
+  /** Regeneração de recurso por segundo. */
+  resourceRegen: number
 }
 
 /** DPS medido para um fingerprint específico (mecânica de números descobertos). */

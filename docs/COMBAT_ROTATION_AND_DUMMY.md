@@ -114,10 +114,12 @@ interface SkillDefinition {
   // Combo (setup → payoff):
   applies?: MarkId                 // marca/exposição que a skill aplica no alvo
   appliesDuration?: number         // duração da marca (s)
-  consumes?: MarkId                // marca que a skill consome
-  comboMore?: number               // % de `more` ganho ao consumir a marca (ex.: 40)
+  empoweredBy?: MarkId             // marca que empodera esta skill enquanto ativa
+  comboMore?: number               // % de `more` ganho enquanto a marca está ativa (ex.: 40)
 }
 ```
+
+> **Modelo de marca (implementado no R1):** a marca é um **debuff com duração** — o setup a **abre** no alvo; o payoff ganha `comboMore` **enquanto ela estiver ativa** (não é removida a cada golpe). Assim, "manter o combo" = recastar o setup antes de expirar, e `comboUptime` = fração do tempo com a marca ativa. (Preferimos "empoderar enquanto ativo" a "consumir e apagar" por ser o sinal mais legível num medidor de DPS.)
 
 Recurso do herói (pool + regen) entra no `Power` como o [COMBAT §A0](./COMBAT_AND_ARCHETYPES.md) já prevê ("recurso de habilidade" ⏳): `resourceMax`, `resourceRegen` (derivados de atributos/afixos; começam com constantes simples).
 
@@ -191,7 +193,7 @@ O `fingerprint` ([engine.ts](../src/game/engine.ts)) passa a incluir o **loadout
 
 > Nomeada **R** (rotação) para não colidir com M/S, mas é **o M5 começando cedo e estreito**. Cada fase fecha verde (typecheck+test+build), no fluxo do dono.
 
-- **R1 — Simulador (motor, puro + testes).** `simulateRotation` sobre a matemática física atual: recurso + cooldown + cast + **um par de combo** (uma Exposição setup→payoff) + ataque básico de fallback. Saída: DPS medido + diagnóstico. Fórmula de armadura por tamanho de golpe. **É o risco técnico central — feito primeiro e testado.**
+- ✅ **R1 — Simulador (motor, puro + testes). CONCLUÍDO.** `simulateRotation` ([engine.ts](../src/game/engine.ts)) sobre a matemática física atual: recurso + cooldown + cast + **um par de combo** (Exposição setup→payoff) + ataque básico de fallback. Saída: DPS medido + diagnóstico (`comboUptime`, `resourceUptime`, `bottleneck`, `perSkill`). Fórmula de armadura por tamanho de golpe (`A/(A+12×golpe)`, teto 90%). Constantes R1: recurso `max 100`/`regen 10` (placeholder, `deriveResource`); Exposição `4s`, `comboMore 40%`; ataque básico `mult 0.5`. `aggregate` refatorado com `buildContext` compartilhado (mesma matemática; a sim reduz ao DPS do `aggregate` para a skill única). **6 testes novos** (equivalência, ordem importa, starvation→gargalo, armadura, determinismo, utilitária ignorada). Ainda **não** toca `fingerprint`/store/UI (é R2).
 - **R2 — Boneco de Treino (UI).** Tela/seção que roda a sim, revela o DPS medido (count-up), com **alvo modificável** (armadura ativa; res. stub) e **diagnóstico**. Grava `measured`. `fingerprint` passa a incluir loadout+ordem.
 - **R3 — Tela de Habilidades com combo (UI).** Pool de skills + editor de rotação (prioridade), suportes por skill (atual), selos de combo, prévia de Δ DPS. Aposenta as "Regras de comportamento" decorativas.
 - **R4 — Unificar com a dungeon.** A dungeon usa o measured da sim (já usa via `measured`); opcionalmente roda a **mesma sim** por baixo para o relatório. Mantém **sobrevivência + loot** como o extra da dungeon.

@@ -389,9 +389,14 @@ export const SKILLS: SkillDefinition[] = [
     type: 'atk',
     glyph: '⚔',
     tags: ['ataque', 'corpo-a-corpo', 'físico'],
-    meta: 'ATIVA · custo 8 · exec 0.7s',
-    desc: 'Ataque pesado de alvo único que ignora parte da armadura. É a habilidade que define seu DPS.',
+    meta: 'ATIVA · custo 8 · guiado pela vel. de ataque',
+    desc: 'Ataque pesado de alvo único que ignora parte da armadura. Enche os intervalos da rotação e potencializa com a Exposição.',
     damageMult: 1,
+    cost: 8,
+    cooldown: 0,
+    castTime: 0, // guiado pela velocidade de ataque (1/aps)
+    empoweredBy: 'exposure',
+    comboMore: 40,
     defaultSockets: ['s_blood', 's_brutal'],
   },
   {
@@ -400,9 +405,14 @@ export const SKILLS: SkillDefinition[] = [
     type: 'spell',
     glyph: '◈',
     tags: ['ataque', 'área', 'físico', 'atordoamento'],
-    meta: 'ATIVA · custo 18 · rec 3.5s',
-    desc: 'Fende o solo à frente, dano em área e atordoa grupos.',
+    meta: 'ATIVA · custo 20 · rec 3.5s · aplica Exposição',
+    desc: 'Fende o solo à frente, dano em área e abre a Exposição no alvo — mantê-la ativa potencializa o Golpe Rompedor.',
     damageMult: 0.8,
+    cost: 20,
+    cooldown: 3.5,
+    castTime: 0.6,
+    applies: 'exposure',
+    appliesDuration: 4,
     defaultSockets: ['s_aoe'],
   },
   {
@@ -414,6 +424,9 @@ export const SKILLS: SkillDefinition[] = [
     meta: 'ATIVA · rec 9s · dur 4s',
     desc: 'Reduz o dano recebido e eleva o bloqueio por um curto período.',
     damageMult: 0,
+    cost: 0,
+    cooldown: 9,
+    castTime: 0.4,
     defaultSockets: ['s_fort'],
   },
   {
@@ -425,9 +438,33 @@ export const SKILLS: SkillDefinition[] = [
     meta: 'RESERVA · reserva 55',
     desc: 'Efeito persistente: concede armadura e regeneração enquanto ativo.',
     damageMult: 0,
+    cost: 0,
+    cooldown: 0,
+    castTime: 0,
     defaultSockets: [],
   },
 ]
+
+/**
+ * Ataque básico de retaguarda: entra quando nenhuma ativa da rotação está
+ * pronta (em cooldown) ou o recurso não paga a próxima. Grátis, mult baixo —
+ * é o piso que garante que a simulação nunca trava e o sinal de "sem recurso".
+ * Não é escolhível no loadout; o motor o usa como fallback.
+ */
+export const BASIC_ATTACK: SkillDefinition = {
+  id: 'sk_basic',
+  name: 'Ataque Básico',
+  type: 'atk',
+  glyph: '·',
+  tags: ['ataque', 'corpo-a-corpo', 'físico'],
+  meta: 'BÁSICO · grátis',
+  desc: 'Golpe simples sem custo, usado quando as ativas da rotação não podem ser lançadas.',
+  damageMult: 0.5,
+  cost: 0,
+  cooldown: 0,
+  castTime: 0,
+  defaultSockets: [],
+}
 
 export const SUPPORTS: SupportDefinition[] = [
   { id: 's_blood', name: 'Sede de Sangue', match: ['ataque'], note: '+15% dano', mods: { moreDamage: 15 } },
