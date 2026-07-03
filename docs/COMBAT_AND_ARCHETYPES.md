@@ -99,7 +99,7 @@ Tudo continua **puro** e alimenta a mecânica de **números descobertos** (DPS r
 
 ## A4. Faseamento do motor (do atual ao alvo)
 
-- **M1 — Multi-tipo + penetração + resistências por tipo.** Generaliza o pipeline (hoje só físico) para os 5 tipos. Baixo risco, alto ganho de variedade.
+- ✅ **M1 — Multi-tipo + penetração + resistências por tipo. CONCLUÍDO (03/jul).** O pipeline de dano (antes só físico) foi generalizado para os 5 tipos em `engine.ts`: `avgHitByType`/`prepareSkill` somam `added{Tipo}` + `inc{Tipo}`/`incElemental` por tipo; `mitigateHit` aplica **armadura ao físico** e **resistência do alvo − penetração** aos elementais/caos (teto 75, piso −60). `aggregate` e `simulateRotation` compartilham a mesma matemática (a equivalência física ficou intacta — 53 testes seguiram verdes ao refatorar). Skills ganharam `damageType`/`baseDamage` (magias elementais não escalam com a arma física). Conteúdo: **Bola de Fogo** (fogo) e **Flecha Trovejante** (raio); afixos `added fire/cold/lightning/chaos`, `inc elemental`, penetração elemental; nós `Faísca`/`Convergência Elemental`; suportes `Foco Elemental`/`Ruptura Arcana`/`Projétil Veloz`. UI: boneco com **sliders de resistência por tipo** + **breakdown de dano por tipo**; selo de tipo nas skills. **+5 testes** (58 no total). Ver COMBAT_ROTATION_AND_DUMMY (R5 liga os sliders — feito aqui).
 - **M2 — Armadura por tamanho de golpe + evasão + ES + bloqueio** como camadas reais de EHP (troca a mitigação simplificada atual).
 - **M3 — Ailments/DoT** (sangramento/queimadura/veneno) e chill/shock/freeze como escala/controle. Habilita builds de DoT (muito amadas).
 - **M4 — Fontes múltiplas** (minions, totens/balista) somando ao DPS. Habilita summoner/totem.

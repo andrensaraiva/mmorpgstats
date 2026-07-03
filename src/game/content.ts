@@ -256,6 +256,70 @@ export const AFFIX_GROUPS: AffixGroup[] = [
       { tier: 2, ranges: { incPhys: [50, 68] }, text: '+{incPhys}% dano físico aumentado', minItemLevel: 44 },
     ],
   },
+  // ---- M1: dano elemental/caos adicionado (armas) ----
+  {
+    id: 'added_fire',
+    name: 'Dano de Fogo Adicionado',
+    kind: 'prefix',
+    classes: ['weapon'],
+    tiers: [
+      { tier: 5, ranges: { addedFireMin: [3, 6], addedFireMax: [9, 14] }, text: 'Adiciona {addedFireMin}–{addedFireMax} dano de fogo', minItemLevel: 1 },
+      { tier: 3, ranges: { addedFireMin: [10, 16], addedFireMax: [24, 34] }, text: 'Adiciona {addedFireMin}–{addedFireMax} dano de fogo', minItemLevel: 40 },
+      { tier: 1, ranges: { addedFireMin: [22, 30], addedFireMax: [44, 60] }, text: 'Adiciona {addedFireMin}–{addedFireMax} dano de fogo', minItemLevel: 66 },
+    ],
+  },
+  {
+    id: 'added_cold',
+    name: 'Dano de Frio Adicionado',
+    kind: 'prefix',
+    classes: ['weapon'],
+    tiers: [
+      { tier: 5, ranges: { addedColdMin: [3, 6], addedColdMax: [8, 13] }, text: 'Adiciona {addedColdMin}–{addedColdMax} dano de frio', minItemLevel: 1 },
+      { tier: 3, ranges: { addedColdMin: [9, 15], addedColdMax: [22, 31] }, text: 'Adiciona {addedColdMin}–{addedColdMax} dano de frio', minItemLevel: 40 },
+      { tier: 1, ranges: { addedColdMin: [20, 28], addedColdMax: [40, 55] }, text: 'Adiciona {addedColdMin}–{addedColdMax} dano de frio', minItemLevel: 66 },
+    ],
+  },
+  {
+    id: 'added_lightning',
+    name: 'Dano de Raio Adicionado',
+    kind: 'prefix',
+    classes: ['weapon'],
+    tiers: [
+      { tier: 5, ranges: { addedLightningMin: [1, 2], addedLightningMax: [14, 22] }, text: 'Adiciona {addedLightningMin}–{addedLightningMax} dano de raio', minItemLevel: 1 },
+      { tier: 3, ranges: { addedLightningMin: [2, 4], addedLightningMax: [38, 52] }, text: 'Adiciona {addedLightningMin}–{addedLightningMax} dano de raio', minItemLevel: 40 },
+      { tier: 1, ranges: { addedLightningMin: [3, 6], addedLightningMax: [70, 98] }, text: 'Adiciona {addedLightningMin}–{addedLightningMax} dano de raio', minItemLevel: 66 },
+    ],
+  },
+  {
+    id: 'added_chaos',
+    name: 'Dano de Caos Adicionado',
+    kind: 'prefix',
+    classes: ['weapon'],
+    tiers: [
+      { tier: 3, ranges: { addedChaosMin: [6, 10], addedChaosMax: [16, 24] }, text: 'Adiciona {addedChaosMin}–{addedChaosMax} dano de caos', minItemLevel: 44 },
+      { tier: 1, ranges: { addedChaosMin: [16, 22], addedChaosMax: [34, 48] }, text: 'Adiciona {addedChaosMin}–{addedChaosMax} dano de caos', minItemLevel: 68 },
+    ],
+  },
+  {
+    id: 'inc_elemental',
+    name: 'Dano Elemental Aumentado',
+    kind: 'prefix',
+    classes: ['jewellery', 'weapon'],
+    tiers: [
+      { tier: 4, ranges: { incElemental: [12, 20] }, text: '+{incElemental}% dano elemental aumentado', minItemLevel: 1 },
+      { tier: 2, ranges: { incElemental: [30, 42] }, text: '+{incElemental}% dano elemental aumentado', minItemLevel: 50 },
+    ],
+  },
+  {
+    id: 'elem_pen',
+    name: 'Penetração Elemental',
+    kind: 'suffix',
+    classes: ['jewellery'],
+    tiers: [
+      { tier: 3, ranges: { firePen: [4, 7], coldPen: [4, 7], lightningPen: [4, 7] }, text: 'Penetra {firePen}% das resistências elementais', minItemLevel: 40 },
+      { tier: 1, ranges: { firePen: [8, 12], coldPen: [8, 12], lightningPen: [8, 12] }, text: 'Penetra {firePen}% das resistências elementais', minItemLevel: 68 },
+    ],
+  },
   {
     id: 'flat_life',
     name: 'Vida Máxima',
@@ -443,6 +507,43 @@ export const SKILLS: SkillDefinition[] = [
     castTime: 0,
     defaultSockets: [],
   },
+  // ---- M1: ativas elementais (arquétipos elementalista / arqueiro de raio) ----
+  {
+    id: 'sk_fireball',
+    name: 'Bola de Fogo',
+    type: 'spell',
+    glyph: '🔥',
+    tags: ['conjuração', 'projétil', 'área', 'fogo', 'elemental'],
+    meta: 'ATIVA · custo 14 · conj. 0.55s · aplica Exposição',
+    desc: 'Lança uma bola de fogo que explode no impacto. Dano de FOGO próprio (não escala com a arma física) e abre a Exposição no alvo.',
+    damageMult: 1,
+    damageType: 'fire',
+    baseDamage: { min: 34, max: 58 },
+    cost: 14,
+    cooldown: 0,
+    castTime: 0.55,
+    applies: 'exposure',
+    appliesDuration: 4,
+    defaultSockets: [],
+  },
+  {
+    id: 'sk_shock_arrow',
+    name: 'Flecha Trovejante',
+    type: 'atk',
+    glyph: '⚡',
+    tags: ['ataque', 'projétil', 'raio', 'elemental'],
+    meta: 'ATIVA · custo 9 · guiado pela vel. de ataque',
+    desc: 'Dispara uma flecha carregada de RAIO. Dano elemental próprio, veloz — enche os intervalos da rotação e potencializa com a Exposição.',
+    damageMult: 0.9,
+    damageType: 'lightning',
+    baseDamage: { min: 20, max: 62 },
+    cost: 9,
+    cooldown: 0,
+    castTime: 0,
+    empoweredBy: 'exposure',
+    comboMore: 40,
+    defaultSockets: [],
+  },
 ]
 
 /**
@@ -484,6 +585,10 @@ export const SUPPORTS: SupportDefinition[] = [
   { id: 's_cleave', name: 'Fenda Profunda', match: ['área', 'físico'], note: '+14% dano', mods: { moreDamage: 14 } },
   { id: 's_dur', name: 'Duração Estendida', match: ['persistente', 'defesa'], note: '+4% vida', mods: { incLife: 4 } },
   { id: 's_fort', name: 'Reforço', match: ['defesa'], note: '+8% vida', mods: { incLife: 8 } },
+  // ---- M1: suportes elementais ----
+  { id: 's_elem', name: 'Foco Elemental', match: ['elemental'], note: '+18% dano elemental', mods: { incElemental: 18 } },
+  { id: 's_pierce', name: 'Ruptura Arcana', match: ['elemental'], note: '+8% penetração elem.', mods: { firePen: 8, coldPen: 8, lightningPen: 8 } },
+  { id: 's_proj', name: 'Projétil Veloz', match: ['projétil'], note: '+12% dano', mods: { moreDamage: 12 } },
 ]
 
 export const BEHAVIOR: Array<{ when: string; then: string }> = [
@@ -521,11 +626,14 @@ export const TREE: PassiveTree = {
     { id: 'u3', x: 372, y: 96, type: 'notable', path: 'util', name: 'Estrategista', stat: '+1 soquete de suporte por habilidade', mods: { supportCap: 1 } },
     { id: 'u4', x: 456, y: 72, type: 'small', path: 'util', name: 'Presteza', stat: '+3% vel. de ataque', mods: { incAttackSpeed: 3 } },
     { id: 'u5', x: 372, y: 34, type: 'keystone', path: 'util', name: 'Mente Fria', stat: 'KEYSTONE: +5% dano', mods: { moreDamage: 5 } },
+    // ---- M1: ramo elemental ----
+    { id: 'u6', x: 520, y: 158, type: 'small', path: 'util', name: 'Faísca', stat: '+16% dano elemental', mods: { incElemental: 16 } },
+    { id: 'u7', x: 588, y: 130, type: 'notable', path: 'util', name: 'Convergência Elemental', stat: '+30% dano elemental, +6% penetração', mods: { incElemental: 30, firePen: 6, coldPen: 6, lightningPen: 6 } },
   ],
   edges: [
     ['s0', 'o1'], ['o1', 'o2'], ['o2', 'o3'], ['o3', 'o4'], ['o4', 'o5'], ['o1', 'o6'], ['o6', 'o3'],
     ['s0', 'd1'], ['d1', 'd2'], ['d2', 'd3'], ['d3', 'd4'], ['d4', 'd5'], ['d1', 'd6'], ['d6', 'd3'],
-    ['s0', 'u1'], ['u1', 'u2'], ['u2', 'u3'], ['u3', 'u4'], ['u4', 'u5'],
+    ['s0', 'u1'], ['u1', 'u2'], ['u2', 'u3'], ['u3', 'u4'], ['u4', 'u5'], ['u2', 'u6'], ['u6', 'u7'],
   ],
 }
 

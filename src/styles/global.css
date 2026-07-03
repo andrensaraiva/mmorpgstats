@@ -4620,3 +4620,69 @@ a {
     display: none;
   }
 }
+
+/* ===================== M1 — BONECO: RESISTÊNCIAS E DANO POR TIPO ===================== */
+
+.dummy-res-sliders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  margin-top: 6px;
+}
+.dummy-slider--sm input[type='range'] {
+  height: 3px;
+}
+
+.dmg-types {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dmg-type {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.dmg-type .dt-k {
+  font-size: 12px;
+  font-family: 'Cinzel', serif;
+}
+.dt-bar {
+  height: 10px;
+  background: var(--panel3);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.dt-fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: currentColor;
+  opacity: 0.85;
+}
+/* cor por tipo (reaproveita a paleta das dungeons) */
+.dt--phys { color: #d8d2c4; }
+.dt--fire { color: #ff9a5a; }
+.dt--cold { color: #8fd0ff; }
+.dt--lightning { color: #f2e06a; }
+.dt--chaos { color: #cf8cff; }
+.dmg-type .dt-k,
+.dmg-type .dt-v {
+  color: var(--text);
+}
+
+/* selo do tipo de dano de uma skill (na rotação e no pool) */
+.type-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-family: 'Cinzel', serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}

@@ -2,8 +2,8 @@
 
 - **Criado:** 01 de julho de 2026 · **Atualizado:** 03 de julho de 2026
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
-- **Status:** consolidação concluída (um só protótipo React na raiz); **Polish Visual & UX concluído** (Fases **A–E** + fundações **F1/F2/F3**; resta só a **F, arte/áudio**); **e a trilha de combate R1–R4 CONCLUÍDA** — rotação real (recurso/cooldown/combo), Boneco de Treino e motor de dungeon tank×DPS. Fonte da verdade dessa trilha: [COMBAT_ROTATION_AND_DUMMY.md §7](./COMBAT_ROTATION_AND_DUMMY.md). Próximo valor: **R5/M1 (motor multi-tipo)**, persistência ou item rico. Ver também [POLISH_ROADMAP.md §10](./POLISH_ROADMAP.md).
-- **Último commit:** `938e1b7` (R4 — motor de combate da dungeon) — branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
+- **Status:** consolidação concluída (um só protótipo React na raiz); **Polish Visual & UX concluído** (A–E + F1/F2/F3; resta só a **F, arte/áudio**); **combate R1–R4 concluído** (rotação/boneco/dungeon tank×DPS); **e o motor M1 (multi-tipo) CONCLUÍDO** — dano físico/fogo/frio/raio/caos + penetração + resistências por tipo. Fontes: [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md), [COMBAT_ROTATION_AND_DUMMY §7](./COMBAT_ROTATION_AND_DUMMY.md). Próximo valor: **M2 (evasão/ES/armadura por golpe)**, persistência ou item rico.
+- **Último commit:** `1d280be` (docs handoff R1–R4) — M1 entra no commit desta sessão. Branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
 
 > Para o próximo assistente/sessão: leia este arquivo inteiro. Comece pela **§5 — Ponto de partida** (é onde a fase de Polish parou). O fluxo de trabalho do dono: **commite cada etapa, atualize os docs, push perto do fim da sessão** (typecheck+test+build verdes a cada passo).
 
@@ -38,7 +38,7 @@ Tudo vive no app React da raiz. Núcleo de jogo separado da UI, em `src/game/`:
 - **`src/styles/global.css`** — visual POE full-width portado do `prototype-claude/styles.css`.
 
 ### Validação técnica (verde a cada commit)
-- `npm run typecheck` sem erros · `npm test` — **53 testes** aprovados · `npm run build` (tsc + vite) concluído.
+- `npm run typecheck` sem erros · `npm test` — **58 testes** aprovados · `npm run build` (tsc + vite) concluído.
 - Núcleo do **motor** (`engine.ts`) segue **puro e determinístico**: durante o polish (A–F) ficou intocado; a trilha de combate R1–R4 **adicionou** `simulateRotation`/`simulateDungeon` como novas funções puras cobertas por testes (mesma filosofia do `aggregate` — sem estado, sem RNG no número oficial). O `store.ts` (React) orquestra loadout/measured/toasts.
 
 ---
@@ -57,6 +57,7 @@ Existe **um só** protótipo agora; o `prototype-claude/` e a antiga `src/` (App
 
 - **Poder por golpe (`aggregate`):** dano físico da arma-base + afixos/implícitos → golpe médio × vel. de ataque × fator de crítico × multiplicador do golpe × (1+more) × (1−less). Vida = (base + Força + vida plana) × (1+vida%); EHP acrescenta mitigação de armadura. Resistências com teto de 75.
 - **DPS da build (R1–R3):** não é mais só a `sk_strike`. `simulateRotation` sequencia o **loadout** no tempo (recurso/cooldown/cast + combo Exposição setup→payoff + ataque básico de fallback) e devolve o DPS medido + diagnóstico. `selectPower.dps` e o `measured` vêm dessa sim (janela neutra de 12s = âncora). **Ordem da rotação importa.**
+- **Dano multi-tipo (M1):** o passo de dano soma por tipo (físico/fogo/frio/raio/caos): `added{Tipo}` + `inc{Tipo}`/`incElemental`. **Físico** é mitigado pela armadura do alvo (dependente do tamanho do golpe); **elementais/caos** pela resistência do alvo **menos a penetração** do herói (`firePen` etc.). Skills têm `damageType`/`baseDamage` (magias elementais não escalam com a arma). O boneco tem sliders de resistência por tipo e mostra o **dano por tipo**.
 - **Números descobertos:** `measured = { fingerprint, dps }`; o DPS real só aparece se `measured.fingerprint === fingerprint(atual)`. O `fingerprint` inclui equipado + árvore + soquetes **+ loadout/ordem**. Grava o measured: **bater no boneco** (R2, grátis) ou **rodar a dungeon** (R4).
 - **Crafting:** cada orbe respeita as regras de raridade (mágico ≤1 prefixo/1 sufixo; raro ≤3/3). Divino reroda valores; Vaal corrompe e trava. `craft` nunca muta a entrada — devolve nova instância com uid novo.
 - **Dungeon (R4, `simulateDungeon`):** corrida **tempo-para-limpar** (`diff/DPS×12`) × **tempo-para-morrer** (EHP ÷ dano recebido mitigado); **CC** (frio/caster) pausa a limpeza → `reason:'control'`; **poções** (4 cargas) curam; devolve `DungeonReport` completo. Constantes de balanceamento provisórias no topo da seção (`INCOMING_K` etc.) — dependem do M2 (camadas reais) para dano recebido 100% fiel.
@@ -84,13 +85,16 @@ O dono escolheu começar a virada pelo **Polish Visual & UX** ([POLISH_ROADMAP.m
 - ✅ **Fundações — F1 (tokens semânticos + [THEME.md](./THEME.md)), F2 (contrato de assets `icon`, já existia), F3 (galeria `?dev=gallery`).**
 - ⏳ **Fase F — arte & áudio (aberta, assíncrona).** Depende de produção de assets; o contrato F2 já deixa a arte final entrar por dados, sem mexer em componente.
 
-### ▶ RETOMAR AQUI — Polish (A–E) e combate R1–R4 concluídos; escolher a próxima trilha
-Dois grandes blocos estão fechados: o **Polish Visual & UX** (A–E + F1/F2/F3; resta só a F, arte/áudio) e a **trilha de combate R1–R4** (rotação real + Boneco de Treino + motor de dungeon tank×DPS — ver [COMBAT_ROTATION_AND_DUMMY.md §7](./COMBAT_ROTATION_AND_DUMMY.md)). Tudo verde (53 testes). Próximos alvos possíveis (maior risco/retorno primeiro):
+### ▶ RETOMAR AQUI — Polish (A–E), combate R1–R4 e motor M1 concluídos; escolher a próxima trilha
+Fechados: **Polish Visual & UX** (A–E + F1/F2/F3; resta só a F), **combate R1–R4** (rotação/boneco/dungeon), e o **motor M1 multi-tipo** (dano físico/fogo/frio/raio/caos + penetração + resistências por tipo — ver [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md)). Tudo verde (58 testes). Próximos alvos possíveis (maior risco/retorno primeiro):
 
-1. **R5 / M1 — motor multi-tipo** ([COMBAT_AND_ARCHETYPES](./COMBAT_AND_ARCHETYPES.md)): dano físico/fogo/frio/raio/caos + penetração/resistências por tipo. É a continuação natural do combate — quando entrar, **só o passo de dano** de `simulateRotation`/`simulateDungeon` cresce; rotação/combo/boneco **não mudam**, e o boneco liga os **sliders de resistência** (hoje stub). Risco técnico central; destrava relatórios/rankings fiéis.
-2. **Persistência** ([abaixo](#trilhas-paralelas-depoisjunto-do-polish)): gravar runs/loadout/measured no `store` + localStorage torna histórico/recordes/loadouts do dashboard reais (hoje demonstrativos).
-3. **S1+ — modelo de item rico** ([EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)): qualidade, evasão/ES, requisitos, novos afixos.
-4. **Afinar o R4** (constantes `INCOMING_K`/poções/CC no topo da seção da dungeon em `engine.ts`): balanceamento provisório, para calibrar com testes.
+1. **M2 — camadas de defesa reais** ([COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md)): armadura por tamanho de golpe (já no lado ofensivo do alvo — falta no EHP do herói), **evasão** (teto 95%) e **escudo de energia** (buffer antes da vida) como camadas de EHP reais, substituindo a mitigação simplificada `armour/(armour+1500)`. Habilita o trade-off armadura×evasão×ES.
+2. **M3 — ailments/DoT** (sangramento/queimadura/veneno + chill/shock/freeze): habilita builds de DoT, muito amadas. Depende do M1 (já feito) para os tipos.
+3. **Persistência** ([abaixo](#trilhas-paralelas-depoisjunto-do-polish)): gravar runs/loadout/measured no `store` + localStorage torna histórico/recordes/loadouts do dashboard reais (hoje demonstrativos).
+4. **S1+ — modelo de item rico** ([EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)): qualidade, evasão/ES, requisitos, novos afixos (casa com o M2).
+5. **Afinar o R4** (constantes `INCOMING_K`/poções/CC no topo da seção da dungeon em `engine.ts`): balanceamento provisório.
+
+Notas do M1 para quem seguir: o pipeline de dano vive em `engine.ts` (`avgHitByType`/`prepareSkill`/`mitigateHit`); `aggregate` e `simulateRotation` compartilham a matemática — **mudanças no dano entram uma vez e valem nos dois**. Skills elementais usam `baseDamage` próprio (não escalam com a arma). O `simulateDungeon` (lado recebido) ainda usa o gate de fogo legado + `diff`; ligar o dano recebido multi-tipo por camada é parte do M2.
 
 Notas: a **galeria** (`?dev=gallery`) mostra os átomos; o **manifesto de tema** ([THEME.md](./THEME.md)) rege os tokens (componentes novos consomem tokens; migração do CSS legado é incremental). O `fingerprint` agora inclui **loadout+ordem** — mexer na rotação esconde o DPS medido (coerente com "números descobertos").
 

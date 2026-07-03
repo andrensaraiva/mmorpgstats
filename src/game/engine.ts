@@ -21,6 +21,7 @@ import {
 import type {
   AffixGroup,
   AffixKind,
+  DamageByType,
   DamageType,
   Dungeon,
   DungeonOutcome,
@@ -165,35 +166,18 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
   const ctx = buildContext(equipped, allocated)
   const { global } = ctx
 
-  // Mods específicos do golpe principal (suportes só valem na habilidade).
-  // `more`/`less` são multiplicativos e ficam à parte; skillMods só carrega os
-  // aditivos (phys/crit/vel) usados no cálculo do golpe médio.
-  const skillMods: StatMods = { ...global }
-  let moreDamage = global.moreDamage ?? 0
-  const lessDamage = global.lessDamage ?? 0
+  // DPS do golpe principal via o mesmo pipeline por tipo do simulador (contra
+  // alvo sem defesa) — mantém `aggregate.dps` idêntico ao dano de um golpe.
   const mainSockets = sockets[MAIN_SKILL_ID] ?? []
-  for (const sid of mainSockets) {
-    const sup = supportById[sid]
-    if (!sup) continue
-    addMods(skillMods, sup.mods)
-    moreDamage += sup.mods.moreDamage ?? 0
-  }
+  const prepared = prepareSkill(ctx, mainSkill, mainSockets)
+  const attackSpeed = prepared.actionTime > 0 ? 1 / prepared.actionTime : ctx.weaponAps
+  const dps = preparedHit(prepared, { armour: 0 }, false) * attackSpeed
 
-  const physMin = ctx.weaponPhysMin + (skillMods.addedPhysMin ?? 0)
-  const physMax = ctx.weaponPhysMax + (skillMods.addedPhysMax ?? 0)
-  const avgHit = ((physMin + physMax) / 2) * (1 + (skillMods.incPhys ?? 0) / 100)
-  const attackSpeed = ctx.weaponAps * (1 + (skillMods.incAttackSpeed ?? 0) / 100)
+  // Crítico exibido (mesma fórmula do prepareSkill).
+  const skillMods: StatMods = { ...global }
+  for (const sid of mainSockets) addMods(skillMods, supportById[sid]?.mods ?? {})
   const critChance = clamp(5 + (skillMods.critChance ?? 0), 0, 100)
   const critMulti = 150 + (skillMods.critMulti ?? 0)
-  const critFactor = 1 + (critChance / 100) * (critMulti / 100 - 1)
-
-  const dps =
-    avgHit *
-    attackSpeed *
-    critFactor *
-    mainSkill.damageMult *
-    (1 + moreDamage / 100) *
-    (1 - lessDamage / 100)
 
   const strength = global.strength ?? 0
   const life = Math.round((BASE_LIFE + strength + (global.flatLife ?? 0)) * (1 + (global.incLife ?? 0) / 100))
@@ -221,6 +205,10 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
     supportCap: 2 + (global.supportCap ?? 0),
     resourceMax: resource.max,
     resourceRegen: resource.regen,
+    firePen: global.firePen ?? 0,
+    coldPen: global.coldPen ?? 0,
+    lightningPen: global.lightningPen ?? 0,
+    chaosPen: global.chaosPen ?? 0,
   }
 }
 
@@ -238,15 +226,81 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
 const ARMOUR_HIT_K = 12
 const ARMOUR_MIT_CAP = 0.9
 
+/** Os quatro tipos que a resistência do alvo mitiga (físico usa armadura). */
+const ELEMENTAL_TYPES: DamageType[] = ['fire', 'cold', 'lightning', 'chaos']
+
+/** Faixas de `added{Tipo}` por StatKey, por tipo de dano (M1). */
+const ADDED_KEYS: Record<DamageType, [StatKey, StatKey]> = {
+  phys: ['addedPhysMin', 'addedPhysMax'],
+  fire: ['addedFireMin', 'addedFireMax'],
+  cold: ['addedColdMin', 'addedColdMax'],
+  lightning: ['addedLightningMin', 'addedLightningMax'],
+  chaos: ['addedChaosMin', 'addedChaosMax'],
+}
+const INC_KEY: Record<DamageType, StatKey> = {
+  phys: 'incPhys',
+  fire: 'incFire',
+  cold: 'incCold',
+  lightning: 'incLightning',
+  chaos: 'incChaos',
+}
+const PEN_KEY: Record<DamageType, StatKey | null> = {
+  phys: null,
+  fire: 'firePen',
+  cold: 'coldPen',
+  lightning: 'lightningPen',
+  chaos: 'chaosPen',
+}
+const RES_KEY: Record<DamageType, keyof TargetProfile | null> = {
+  phys: null,
+  fire: 'fireRes',
+  cold: 'coldRes',
+  lightning: 'litRes',
+  chaos: 'chaosRes',
+}
+
+/**
+ * Dano-médio por tipo de uma skill, antes de crítico/mult/more/less. Físico
+ * vem da arma (a menos que a skill tenha `baseDamage` próprio e tipo ≠ phys);
+ * cada tipo soma seu `added{Tipo}` de afixos e o aumentado (aditivo) do tipo +
+ * o guarda-chuva elemental. Ver COMBAT §A2/A3.
+ */
+function avgHitByType(ctx: BuildContext, def: SkillDefinition, mods: StatMods): DamageByType {
+  const type = def.damageType ?? 'phys'
+  const incElem = mods.incElemental ?? 0
+  const out: DamageByType = {}
+  for (const dt of ['phys', ...ELEMENTAL_TYPES] as DamageType[]) {
+    const [minK, maxK] = ADDED_KEYS[dt]
+    let min = mods[minK] ?? 0
+    let max = mods[maxK] ?? 0
+    // O dano-base da skill entra no seu tipo primário.
+    if (dt === type) {
+      if (def.baseDamage && type !== 'phys') {
+        min += def.baseDamage.min
+        max += def.baseDamage.max
+      } else if (type === 'phys') {
+        min += ctx.weaponPhysMin
+        max += ctx.weaponPhysMax
+      }
+    }
+    if (min <= 0 && max <= 0) continue
+    const inc = (mods[INC_KEY[dt]] ?? 0) + (dt !== 'phys' ? incElem : 0)
+    out[dt] = ((min + max) / 2) * (1 + inc / 100)
+  }
+  return out
+}
+
 /** Uma skill do loadout já "compilada" para o loop (dano/tempo pré-calculados). */
 interface PreparedSkill {
   def: SkillDefinition
   /** Tempo de uma ação (s): cast fixo, ou 1/vel.ataque para ataques. */
   actionTime: number
-  /** Golpe médio SEM o `more` (avgHit × crítico × mult × (1−less)). */
-  perHitBase: number
+  /** Golpe médio por tipo SEM o `more` (avgHit × crítico × mult × (1−less)). */
+  perHitByType: DamageByType
   /** `more` de global + suportes (sem o bônus de combo). */
   moreBase: number
+  /** Penetração do herói por tipo elemental/caos. */
+  pen: Record<DamageType, number>
 }
 
 function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[]): PreparedSkill {
@@ -259,25 +313,63 @@ function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[
     addMods(skillMods, sup.mods)
     moreBase += sup.mods.moreDamage ?? 0
   }
-  const physMin = ctx.weaponPhysMin + (skillMods.addedPhysMin ?? 0)
-  const physMax = ctx.weaponPhysMax + (skillMods.addedPhysMax ?? 0)
-  const avgHit = ((physMin + physMax) / 2) * (1 + (skillMods.incPhys ?? 0) / 100)
   const critChance = clamp(5 + (skillMods.critChance ?? 0), 0, 100)
   const critMulti = 150 + (skillMods.critMulti ?? 0)
   const critFactor = 1 + (critChance / 100) * (critMulti / 100 - 1)
   const attackSpeed = ctx.weaponAps * (1 + (skillMods.incAttackSpeed ?? 0) / 100)
   const actionTime = def.castTime > 0 ? def.castTime : 1 / attackSpeed
-  const perHitBase = avgHit * critFactor * def.damageMult * (1 - lessDamage / 100)
-  return { def, actionTime, perHitBase, moreBase }
+  const scale = critFactor * def.damageMult * (1 - lessDamage / 100)
+
+  const avg = avgHitByType(ctx, def, skillMods)
+  const perHitByType: DamageByType = {}
+  for (const dt of Object.keys(avg) as DamageType[]) perHitByType[dt] = (avg[dt] ?? 0) * scale
+
+  const pen: Record<DamageType, number> = {
+    phys: 0,
+    fire: skillMods.firePen ?? 0,
+    cold: skillMods.coldPen ?? 0,
+    lightning: skillMods.lightningPen ?? 0,
+    chaos: skillMods.chaosPen ?? 0,
+  }
+  return { def, actionTime, perHitByType, moreBase, pen }
 }
 
-/** Dano de um golpe da skill contra a armadura do alvo, com/sem combo ativo. */
-function preparedHit(p: PreparedSkill, targetArmour: number, empowered: boolean): number {
+/** Mitigação do alvo para um golpe de dano `raw` de um dado tipo. */
+function mitigateHit(dt: DamageType, raw: number, target: TargetProfile, pen: number): number {
+  if (raw <= 0) return 0
+  if (dt === 'phys') {
+    if (target.armour <= 0) return raw
+    const reduction = Math.min(ARMOUR_MIT_CAP, target.armour / (target.armour + ARMOUR_HIT_K * raw))
+    return raw * (1 - reduction)
+  }
+  const resKey = RES_KEY[dt]
+  const res = resKey ? (target[resKey] as number | undefined) ?? 0 : 0
+  const effRes = clamp(res - pen, RES_FLOOR, RES_CAP)
+  return raw * (1 - effRes / 100)
+}
+
+/** Dano total de um golpe da skill contra o alvo, somando os tipos, com/sem combo. */
+function preparedHit(p: PreparedSkill, target: TargetProfile, empowered: boolean): number {
   const more = p.moreBase + (empowered ? p.def.comboMore ?? 0 : 0)
-  const raw = p.perHitBase * (1 + more / 100)
-  if (targetArmour <= 0 || raw <= 0) return raw
-  const reduction = Math.min(ARMOUR_MIT_CAP, targetArmour / (targetArmour + ARMOUR_HIT_K * raw))
-  return raw * (1 - reduction)
+  const moreFactor = 1 + more / 100
+  let total = 0
+  for (const dt of Object.keys(p.perHitByType) as DamageType[]) {
+    const raw = (p.perHitByType[dt] ?? 0) * moreFactor
+    total += mitigateHit(dt, raw, target, p.pen[dt])
+  }
+  return total
+}
+
+/** Dano por tipo de um golpe (para o breakdown do diagnóstico). */
+function hitByType(p: PreparedSkill, target: TargetProfile, empowered: boolean): DamageByType {
+  const more = p.moreBase + (empowered ? p.def.comboMore ?? 0 : 0)
+  const moreFactor = 1 + more / 100
+  const out: DamageByType = {}
+  for (const dt of Object.keys(p.perHitByType) as DamageType[]) {
+    const raw = (p.perHitByType[dt] ?? 0) * moreFactor
+    out[dt] = mitigateHit(dt, raw, target, p.pen[dt])
+  }
+  return out
 }
 
 export interface SimulateInput {
@@ -319,6 +411,7 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   let basicActions = 0
   let actions = 0
   const per = new Map<string, { casts: number; damage: number }>()
+  const byType: DamageByType = {}
   const timeline: TickEvent[] = []
 
   const guardMax = Math.ceil(seconds / 0.05) + 16 // trava anti-loop (toda ação tem dt>0)
@@ -342,7 +435,7 @@ export function simulateRotation(input: SimulateInput): RotationResult {
     const mark = chosen.def.empoweredBy
     const empowered = mark != null && (markExpiry[mark] ?? 0) > t
     const dt = chosen.actionTime
-    const dmg = preparedHit(chosen, target.armour, empowered)
+    const dmg = preparedHit(chosen, target, empowered)
 
     // Uptime da marca durante [t, t+dt] (antes de reaplicar).
     for (const m of Object.keys(markExpiry) as MarkId[]) {
@@ -352,6 +445,8 @@ export function simulateRotation(input: SimulateInput): RotationResult {
 
     // Aplica efeitos.
     total += dmg
+    const parts = hitByType(chosen, target, empowered)
+    for (const k of Object.keys(parts) as DamageType[]) byType[k] = (byType[k] ?? 0) + (parts[k] ?? 0)
     resource = Math.min(resMax, resource - chosen.def.cost + regen * dt)
     if (chosen.def.cooldown > 0) readyAt[chosen.def.id] = t + chosen.def.cooldown
     if (chosen.def.applies) markExpiry[chosen.def.applies] = t + (chosen.def.appliesDuration ?? 0)
@@ -385,7 +480,12 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   else if (hasPayoff && comboUptime < 0.7) bottleneck = 'combo'
   else if (prepared.length > 0 && basicActions > actions * 0.15) bottleneck = 'cooldown'
 
-  return { dps, window, perSkill, comboUptime, resourceUptime, bottleneck, timeline }
+  const damageByType: DamageByType = {}
+  if (window > 0) {
+    for (const k of Object.keys(byType) as DamageType[]) damageByType[k] = Math.round((byType[k] ?? 0) / window)
+  }
+
+  return { dps, window, perSkill, comboUptime, resourceUptime, bottleneck, damageByType, timeline }
 }
 
 /** Janela (s) e alvo padrão da medição do DPS canônico (o "número descoberto"). */

@@ -12,17 +12,22 @@ import { useMemo, useState } from 'react'
 import { BASIC_ATTACK, SKILLS } from '../game/content'
 import { MEASURE_WINDOW, simulateRotation } from '../game/engine'
 import { selectEquippedItems, selectLoadoutSlots, type Game } from '../game/store'
-import type { RotationBottleneck } from '../game/types'
+import type { DamageType, RotationBottleneck, TargetProfile } from '../game/types'
 import { Panel, PowerBar } from './atoms'
 import { fmtInt } from './format'
 
 const skillName = (id: string) =>
   id === BASIC_ATTACK.id ? BASIC_ATTACK.name : SKILLS.find((s) => s.id === id)?.name ?? id
 
-const PRESETS: Array<{ id: string; label: string; armour: number; hint: string }> = [
-  { id: 'none', label: 'Sem defesa', armour: 0, hint: 'dano bruto' },
-  { id: 'elite', label: 'Elite', armour: 1500, hint: 'armadura média' },
-  { id: 'boss', label: 'Chefe', armour: 6000, hint: 'muito blindado' },
+const TYPE_LABEL: Record<DamageType, string> = {
+  phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
+}
+
+/** Presets do alvo: armadura + resistências elementais (M1). */
+const PRESETS: Array<{ id: string; label: string; target: TargetProfile; hint: string }> = [
+  { id: 'none', label: 'Sem defesa', target: { armour: 0 }, hint: 'dano bruto' },
+  { id: 'elite', label: 'Elite', target: { armour: 1500, fireRes: 30, coldRes: 30, litRes: 30, chaosRes: 0 }, hint: 'armadura + res. média' },
+  { id: 'boss', label: 'Chefe', target: { armour: 6000, fireRes: 60, coldRes: 60, litRes: 60, chaosRes: 30 }, hint: 'muito resistente' },
 ]
 
 const BOTTLENECK_HINT: Record<RotationBottleneck, string> = {
@@ -54,8 +59,15 @@ function Meter({ label, pct, tone }: { label: string; pct: number; tone: 'teal' 
   )
 }
 
+const ELEM_SLIDERS: Array<{ key: 'fireRes' | 'coldRes' | 'litRes' | 'chaosRes'; label: string }> = [
+  { key: 'fireRes', label: 'Res. Fogo' },
+  { key: 'coldRes', label: 'Res. Frio' },
+  { key: 'litRes', label: 'Res. Raio' },
+  { key: 'chaosRes', label: 'Res. Caos' },
+]
+
 export function TrainingDummy({ game }: { game: Game }) {
-  const [armour, setArmour] = useState(0)
+  const [target, setTarget] = useState<TargetProfile>({ armour: 0 })
   const equipped = useMemo(() => selectEquippedItems(game.state), [game.state])
   const slots = useMemo(() => selectLoadoutSlots(game.state), [game.state])
 
@@ -65,11 +77,18 @@ export function TrainingDummy({ game }: { game: Game }) {
         equipped,
         allocated: game.state.allocated,
         loadout: slots,
-        target: { armour },
+        target,
         seconds: MEASURE_WINDOW,
       }),
-    [equipped, game.state.allocated, slots, armour],
+    [equipped, game.state.allocated, slots, target],
   )
+
+  const byType = Object.entries(result.damageByType)
+    .filter(([, v]) => (v ?? 0) > 0)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)) as Array<[DamageType, number]>
+  const presetId = PRESETS.find((p) => JSON.stringify(p.target) === JSON.stringify(target))?.id
+  const setArmour = (armour: number) => setTarget((t) => ({ ...t, armour }))
+  const setRes = (key: string, v: number) => setTarget((t) => ({ ...t, [key]: v }))
 
   const measuredHere = game.knownDps != null
 
@@ -102,9 +121,9 @@ export function TrainingDummy({ game }: { game: Game }) {
         {PRESETS.map((p) => (
           <button
             key={p.id}
-            className={`dummy-preset${armour === p.armour ? ' on' : ''}`}
-            onClick={() => setArmour(p.armour)}
-            aria-pressed={armour === p.armour}
+            className={`dummy-preset${presetId === p.id ? ' on' : ''}`}
+            onClick={() => setTarget({ ...p.target })}
+            aria-pressed={presetId === p.id}
           >
             <span className="dp-lbl">{p.label}</span>
             <span className="dp-hint tiny muted">{p.hint}</span>
@@ -113,21 +132,39 @@ export function TrainingDummy({ game }: { game: Game }) {
       </div>
       <label className="dummy-slider">
         <span className="tiny muted">
-          Armadura do alvo: <b className="teal">{fmtInt(armour)}</b>
+          Armadura do alvo: <b className="teal">{fmtInt(target.armour)}</b>
         </span>
         <input
           type="range"
           min={0}
           max={8000}
           step={250}
-          value={armour}
+          value={target.armour}
           onChange={(e) => setArmour(Number(e.target.value))}
           aria-label="Armadura do alvo"
         />
       </label>
+      <div className="dummy-res-sliders">
+        {ELEM_SLIDERS.map((s) => (
+          <label className="dummy-slider dummy-slider--sm" key={s.key}>
+            <span className="tiny muted">
+              {s.label}: <b className="teal">{target[s.key] ?? 0}%</b>
+            </span>
+            <input
+              type="range"
+              min={-30}
+              max={80}
+              step={5}
+              value={target[s.key] ?? 0}
+              onChange={(e) => setRes(s.key, Number(e.target.value))}
+              aria-label={`${s.label} do alvo`}
+            />
+          </label>
+        ))}
+      </div>
       <div className="tiny muted">
-        Resistências por tipo entram com o motor multi-tipo (M1). Hoje o dano é físico e a armadura manda — golpe grande
-        fura, golpe pequeno é mitigado.
+        Físico é mitigado pela <b>armadura</b> (golpe grande fura, pequeno é mitigado); os tipos elementais/caos pela{' '}
+        <b>resistência</b> do alvo, reduzida pela sua <b>penetração</b>.
       </div>
 
       <div className="dummy-readout">
@@ -135,6 +172,26 @@ export function TrainingDummy({ game }: { game: Game }) {
         <span className="dr-v teal">{fmtInt(result.dps)}</span>
         <span className="dr-note tiny muted">janela de {MEASURE_WINDOW}s simulados</span>
       </div>
+
+      {byType.length > 0 ? (
+        <>
+          <div className="eyebrow mt10 mb6">Dano por tipo</div>
+          <div className="dmg-types">
+            {byType.map(([t, v]) => {
+              const share = result.dps > 0 ? Math.round((v / result.dps) * 100) : 0
+              return (
+                <div className={`dmg-type dt--${t}`} key={t}>
+                  <span className="dt-k">{TYPE_LABEL[t]}</span>
+                  <span className="dt-bar">
+                    <span className="dt-fill" style={{ width: `${share}%` }} />
+                  </span>
+                  <span className="dt-v tiny muted">{share}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      ) : null}
 
       <div className="eyebrow mt10 mb6">Diagnóstico da rotação</div>
       <div className="diag">

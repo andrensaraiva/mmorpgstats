@@ -24,6 +24,7 @@ const DEMO_POWER: Power = {
   fireRes: 75, coldRes: 61, litRes: 48, chaosRes: -20,
   strength: 210, dexterity: 84, intelligence: 60, supportCap: 3,
   resourceMax: 100, resourceRegen: 10,
+  firePen: 0, coldPen: 0, lightningPen: 0, chaosPen: 0,
 }
 
 const sample = makeStarter().inventory

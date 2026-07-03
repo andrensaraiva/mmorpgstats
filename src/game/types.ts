@@ -58,6 +58,26 @@ export type StatKey =
   | 'addedPhysMin'
   | 'addedPhysMax'
   | 'incPhys'
+  // Dano plano adicionado por tipo elemental/caos (M1).
+  | 'addedFireMin'
+  | 'addedFireMax'
+  | 'addedColdMin'
+  | 'addedColdMax'
+  | 'addedLightningMin'
+  | 'addedLightningMax'
+  | 'addedChaosMin'
+  | 'addedChaosMax'
+  // Dano aumentado (aditivo) por tipo e o guarda-chuva elemental (M1).
+  | 'incFire'
+  | 'incCold'
+  | 'incLightning'
+  | 'incChaos'
+  | 'incElemental'
+  // Penetração da resistência do alvo por tipo (M1).
+  | 'firePen'
+  | 'coldPen'
+  | 'lightningPen'
+  | 'chaosPen'
   | 'incAttackSpeed'
   | 'critChance'
   | 'critMulti'
@@ -191,6 +211,17 @@ export interface SkillDefinition {
   desc: string
   /** Multiplicador de dano da habilidade (0 = utilitária, ignorada pela sim de DPS). */
   damageMult: number
+  /**
+   * Tipo do dano da skill (M1). Default `phys`. Ataques físicos escalam com o
+   * dano da arma; skills de tipo elemental/caos usam `baseDamage` próprio e não
+   * herdam o físico da arma (mas ainda somam o `added{Tipo}` de afixos).
+   */
+  damageType?: DamageType
+  /**
+   * Dano-base próprio da skill por conjuração (min/max), para skills que NÃO
+   * escalam com a arma física (ex.: magias elementais). Ausente = usa a arma.
+   */
+  baseDamage?: { min: number; max: number }
   /** Custo de recurso por uso (0 = grátis). */
   cost: number
   /** Recarga em segundos (0 = sem cooldown). */
@@ -260,6 +291,8 @@ export interface RotationResult {
   resourceUptime: number
   /** O limitador dominante do DPS. */
   bottleneck: RotationBottleneck
+  /** DPS por tipo de dano (M1) — para a leitura elemental/físico do boneco. */
+  damageByType: DamageByType
   /** Linha do tempo (opcional). */
   timeline?: TickEvent[]
 }
@@ -434,7 +467,15 @@ export interface Power {
   resourceMax: number
   /** Regeneração de recurso por segundo. */
   resourceRegen: number
+  /** Penetração de resistência por tipo (M1) — reduz a res. efetiva do alvo. */
+  firePen: number
+  coldPen: number
+  lightningPen: number
+  chaosPen: number
 }
+
+/** Distribuição do DPS por tipo de dano (M1) — para o diagnóstico do boneco. */
+export type DamageByType = Partial<Record<DamageType, number>>
 
 /** DPS medido para um fingerprint específico (mecânica de números descobertos). */
 export interface Measured {

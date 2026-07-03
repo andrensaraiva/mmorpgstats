@@ -21,7 +21,7 @@ import {
   simulateDungeon,
   simulateRotation,
 } from './engine'
-import type { ItemInstance } from './types'
+import type { ItemInstance, Power } from './types'
 
 function starterEquipped(): { equipped: ItemInstance[]; map: Record<string, string> } {
   const starter = makeStarter()
@@ -363,6 +363,64 @@ describe('simulateRotation (simulador de rotação — fatia do M5)', () => {
     expect(sim.perSkill.every((s) => s.skillId === 'sk_basic')).toBe(true)
     expect(sim.comboUptime).toBe(0)
   })
+
+  /* ---------- M1: dano multi-tipo, resistência e penetração ---------- */
+
+  // A Bola de Fogo é magia de fogo (baseDamage próprio); mede-se pela parcela de
+  // fogo do breakdown, isolando o ataque básico físico do fallback de recurso.
+  const fireOnly = (target: { armour: number; fireRes?: number }, supports: string[] = []) => {
+    const { equipped } = starterEquipped()
+    const r = simulateRotation({
+      equipped,
+      allocated: ['s0'],
+      loadout: [{ skillId: 'sk_fireball', supports }],
+      target,
+      seconds: 8,
+    })
+    return { r, fire: r.damageByType.fire ?? 0 }
+  }
+
+  it('skill de fogo gera dano de fogo próprio (breakdown tem fogo)', () => {
+    const { fire } = fireOnly({ armour: 0 })
+    expect(fire).toBeGreaterThan(0) // a Bola de Fogo contribui dano de fogo real
+    // Sem a skill de fogo, não há parcela de fogo — confirma a origem.
+    const { equipped } = starterEquipped()
+    const physOnly = simulateRotation({
+      equipped,
+      allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: [] }],
+      target: { armour: 0 },
+      seconds: 8,
+    })
+    expect(physOnly.damageByType.fire ?? 0).toBe(0)
+  })
+
+  it('resistência a fogo do alvo reduz a parcela de fogo (≈ 40% com 60% de res.)', () => {
+    const bare = fireOnly({ armour: 0 }).fire
+    const resisted = fireOnly({ armour: 0, fireRes: 60 }).fire
+    expect(resisted).toBeGreaterThan(0)
+    expect(resisted).toBeCloseTo(bare * 0.4, -1)
+  })
+
+  it('a armadura do alvo não afeta a parcela de dano de fogo (só a resistência)', () => {
+    const soft = fireOnly({ armour: 0 }).fire
+    const armoured = fireOnly({ armour: 9000 }).fire
+    expect(armoured).toBe(soft)
+  })
+
+  it('penetração recupera parte do dano de fogo perdido para a resistência', () => {
+    const withPen = fireOnly({ armour: 0, fireRes: 60 }, ['s_pierce']).fire // +8% pen.
+    const noPen = fireOnly({ armour: 0, fireRes: 60 }).fire
+    expect(withPen).toBeGreaterThan(noPen)
+  })
+
+  it('dano físico ainda passa pela armadura, não pela resistência elemental', () => {
+    const { equipped } = starterEquipped()
+    const loadout = [{ skillId: MAIN_SKILL_ID, supports: supportsOf(MAIN_SKILL_ID) }]
+    const bare = simulateRotation({ equipped, allocated: ['s0'], loadout, target: { armour: 0 }, seconds: 8 })
+    const resOnly = simulateRotation({ equipped, allocated: ['s0'], loadout, target: { armour: 0, fireRes: 75 }, seconds: 8 })
+    expect(resOnly.dps).toBe(bare.dps) // resistência elemental não toca o físico
+  })
 })
 
 describe('simulateDungeon (combate: corrida limpar×morrer, CC, poções)', () => {
@@ -406,11 +464,12 @@ describe('simulateDungeon (combate: corrida limpar×morrer, CC, poções)', () =
   })
 })
 
-function basePower() {
+function basePower(): Power {
   return {
     dps: 300, ehp: 8000, life: 6000, armour: 500, block: 20, attackSpeed: 1.4,
     critChance: 20, critMulti: 180, fireRes: 40, coldRes: 40, litRes: 40, chaosRes: 40,
     strength: 200, dexterity: 40, intelligence: 40, supportCap: 2,
     resourceMax: 100, resourceRegen: 10,
+    firePen: 0, coldPen: 0, lightningPen: 0, chaosPen: 0,
   }
 }

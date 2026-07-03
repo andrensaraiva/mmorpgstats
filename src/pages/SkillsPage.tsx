@@ -1,8 +1,19 @@
 import { SKILLS, SUPPORTS } from '../game/content'
 import type { Game } from '../game/store'
-import type { SkillDefinition } from '../game/types'
+import type { DamageType, SkillDefinition } from '../game/types'
 import { PageHead, Panel } from '../ui/atoms'
 import { TrainingDummy } from '../ui/TrainingDummy'
+
+const TYPE_LABEL: Record<DamageType, string> = {
+  phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
+}
+
+/** Selo do tipo de dano da skill (colorido por tipo — M1). */
+function TypeTag({ skill }: { skill: SkillDefinition }) {
+  if (skill.damageMult === 0) return null
+  const t = skill.damageType ?? 'phys'
+  return <span className={`type-tag dt--${t}`}>{TYPE_LABEL[t]}</span>
+}
 
 /** Banca de suportes compatíveis de uma skill (encaixar/remover por clique). */
 function SupportPalette({ game, skill, cap }: { game: Game; skill: SkillDefinition; cap: number }) {
@@ -65,7 +76,9 @@ export function SkillsPage({ game }: { game: Game }) {
                 <span className="rs-order">{i + 1}</span>
                 <span className={`skill-gem gem--${sk.type}`}>{sk.glyph}</span>
                 <div className="re-main">
-                  <div className="rs-name">{sk.name}</div>
+                  <div className="rs-name">
+                    {sk.name} <TypeTag skill={sk} />
+                  </div>
                   <div className="rs-meta tiny muted">
                     custo {sk.cost} · {sk.cooldown > 0 ? `rec ${sk.cooldown}s` : 'sem cooldown'}
                     {sk.castTime > 0 ? ` · cast ${sk.castTime}s` : ''}
@@ -119,7 +132,9 @@ export function SkillsPage({ game }: { game: Game }) {
               <button key={sk.id} className="pool-chip" onClick={() => game.toggleLoadout(sk.id)}>
                 <span className={`skill-gem gem--${sk.type}`}>{sk.glyph}</span>
                 <span className="pc-main">
-                  <span className="rs-name">{sk.name}</span>
+                  <span className="rs-name">
+                    {sk.name} <TypeTag skill={sk} />
+                  </span>
                   <span className="tiny muted">{sk.desc}</span>
                 </span>
                 <span className="pc-add">+ adicionar</span>
