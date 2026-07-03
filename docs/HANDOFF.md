@@ -2,8 +2,8 @@
 
 - **Criado:** 01 de julho de 2026 · **Atualizado:** 03 de julho de 2026
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
-- **Status:** consolidação concluída (um só protótipo React na raiz); **Polish A–E** + fundações F1/F2/F3 (resta só a **F, arte/áudio**); **combate R1–R4** (rotação/boneco/dungeon tank×DPS); **motor M1 (multi-tipo)** e **M2 (camadas de defesa: evasão/ES/armadura por golpe) CONCLUÍDOS**. Fontes: [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md), [COMBAT_ROTATION_AND_DUMMY §7](./COMBAT_ROTATION_AND_DUMMY.md). Próximo valor: **M3 (ailments/DoT)**, persistência ou item rico.
-- **Último commit:** `fbc1768` (M1 multi-tipo) — M2 entra no commit desta sessão. Branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
+- **Status:** consolidação concluída; **Polish A–E** + F1/F2/F3 (resta só a **F, arte/áudio**); **combate R1–R4** (rotação/boneco/dungeon tank×DPS); e o **MOTOR COMPLETO — M1 (multi-tipo), M2 (evasão/ES/armadura por golpe), M3 (ailments/DoT), M4 (minions/totens) CONCLUÍDOS; M5 (execução por ticks) fechado via R1–R4 + M1–M4**. Fontes: [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md), [COMBAT_ROTATION_AND_DUMMY §7](./COMBAT_ROTATION_AND_DUMMY.md). O que resta é **tuning de balanceamento** e as trilhas de **conteúdo/persistência/online** — não novo sistema de motor.
+- **Último commit:** `b7a9212` (M4 — fontes múltiplas). Branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
 
 > Para o próximo assistente/sessão: leia este arquivo inteiro. Comece pela **§5 — Ponto de partida** (é onde a fase de Polish parou). O fluxo de trabalho do dono: **commite cada etapa, atualize os docs, push perto do fim da sessão** (typecheck+test+build verdes a cada passo).
 
@@ -38,7 +38,7 @@ Tudo vive no app React da raiz. Núcleo de jogo separado da UI, em `src/game/`:
 - **`src/styles/global.css`** — visual POE full-width portado do `prototype-claude/styles.css`.
 
 ### Validação técnica (verde a cada commit)
-- `npm run typecheck` sem erros · `npm test` — **62 testes** aprovados · `npm run build` (tsc + vite) concluído.
+- `npm run typecheck` sem erros · `npm test` — **69 testes** aprovados · `npm run build` (tsc + vite) concluído.
 - Núcleo do **motor** (`engine.ts`) segue **puro e determinístico**: durante o polish (A–F) ficou intocado; a trilha de combate R1–R4 **adicionou** `simulateRotation`/`simulateDungeon` como novas funções puras cobertas por testes (mesma filosofia do `aggregate` — sem estado, sem RNG no número oficial). O `store.ts` (React) orquestra loadout/measured/toasts.
 
 ---
@@ -59,6 +59,8 @@ Existe **um só** protótipo agora; o `prototype-claude/` e a antiga `src/` (App
 - **DPS da build (R1–R3):** não é mais só a `sk_strike`. `simulateRotation` sequencia o **loadout** no tempo (recurso/cooldown/cast + combo Exposição setup→payoff + ataque básico de fallback) e devolve o DPS medido + diagnóstico. `selectPower.dps` e o `measured` vêm dessa sim (janela neutra de 12s = âncora). **Ordem da rotação importa.**
 - **Dano multi-tipo (M1):** o passo de dano soma por tipo (físico/fogo/frio/raio/caos): `added{Tipo}` + `inc{Tipo}`/`incElemental`. **Físico** é mitigado pela armadura do alvo (dependente do tamanho do golpe); **elementais/caos** pela resistência do alvo **menos a penetração** do herói (`firePen` etc.). Skills têm `damageType`/`baseDamage` (magias elementais não escalam com a arma). O boneco tem sliders de resistência por tipo e mostra o **dano por tipo**.
 - **Defesa em camadas (M2):** o **EHP** do herói = **pool (vida + escudo de energia)** ÷ dano-físico-efetivo, onde o físico passa por **armadura por tamanho de golpe × evasão (valor esperado, teto 95%) × bloqueio**. Na dungeon, o **ES absorve antes da vida** (buffer). `Power.evasion`/`energyShield` são exibidos exatos. Ainda determinístico (evasão em valor esperado).
+- **Ailments/DoT (M3):** golpes com `ailment` geram **dano ao longo do tempo** do tipo do ailment (sangramento=físico, queimadura=fogo, veneno=caos), mitigado pela resistência do alvo no tick. **Veneno empilha** (escala com a cadência); sangramento/queimadura **refrescam** (uptime pleno). Entra no `dps` e no breakdown como fonte `dot` (`RotationResult.dotDps`). Escala com `incDot`.
+- **Fontes múltiplas (M4):** skills com `source` (minion/totém) têm **orçamento próprio** e somam **DPS contínuo fora da rotação** (`sourceDps`), mitigado pela defesa do alvo. Escalam com `incMinion`/`incTotem`. Entram no pool da rotação apesar de `damageMult 0`. Assim `dpsTotal = golpe + DoT + minions/totens` — habilita summoner/totem.
 - **Números descobertos:** `measured = { fingerprint, dps }`; o DPS real só aparece se `measured.fingerprint === fingerprint(atual)`. O `fingerprint` inclui equipado + árvore + soquetes **+ loadout/ordem**. Grava o measured: **bater no boneco** (R2, grátis) ou **rodar a dungeon** (R4).
 - **Crafting:** cada orbe respeita as regras de raridade (mágico ≤1 prefixo/1 sufixo; raro ≤3/3). Divino reroda valores; Vaal corrompe e trava. `craft` nunca muta a entrada — devolve nova instância com uid novo.
 - **Dungeon (R4, `simulateDungeon`):** corrida **tempo-para-limpar** (`diff/DPS×12`) × **tempo-para-morrer** (EHP ÷ dano recebido mitigado); **CC** (frio/caster) pausa a limpeza → `reason:'control'`; **poções** (4 cargas) curam; devolve `DungeonReport` completo. Constantes de balanceamento provisórias no topo da seção (`INCOMING_K` etc.) — dependem do M2 (camadas reais) para dano recebido 100% fiel.
@@ -86,15 +88,15 @@ O dono escolheu começar a virada pelo **Polish Visual & UX** ([POLISH_ROADMAP.m
 - ✅ **Fundações — F1 (tokens semânticos + [THEME.md](./THEME.md)), F2 (contrato de assets `icon`, já existia), F3 (galeria `?dev=gallery`).**
 - ⏳ **Fase F — arte & áudio (aberta, assíncrona).** Depende de produção de assets; o contrato F2 já deixa a arte final entrar por dados, sem mexer em componente.
 
-### ▶ RETOMAR AQUI — Polish (A–E), combate R1–R4, motor M1 e M2 concluídos; escolher a próxima trilha
-Fechados: **Polish** (A–E + F1/F2/F3; resta só a F), **combate R1–R4**, **motor M1** (multi-tipo) e **M2** (camadas de defesa: evasão/ES/armadura por golpe no EHP — ver [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md)). Tudo verde (62 testes). Próximos alvos possíveis (maior risco/retorno primeiro):
+### ▶ RETOMAR AQUI — MOTOR COMPLETO (M1–M5); escolher a próxima trilha
+Fechados: **Polish** (A–E + F1/F2/F3; resta só a F), **combate R1–R4**, e o **motor inteiro — M1 (multi-tipo), M2 (evasão/ES/armadura por golpe), M3 (ailments/DoT), M4 (minions/totens), M5 (execução por ticks via R1–R4)** — ver [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md). Tudo verde (69 testes). Não há mais sistema de motor pendente; o que resta é **tuning** e as trilhas de produto (maior valor primeiro):
 
-1. **M3 — ailments/DoT** ([COMBAT_AND_ARCHETYPES §A2/A4](./COMBAT_AND_ARCHETYPES.md)): sangramento (físico), queimadura (fogo), veneno (caos/físico) como **DoT** derivado dos hits + chill/shock/freeze como escala/controle. Habilita builds de DoT (muito amadas). Depende do M1 (feito) para os tipos; o DoT some ao DPS da rotação como uma fonte à parte. **O ES não absorve DoT de sangramento/veneno** — ponto a implementar no lado recebido.
+1. **Tuning de balanceamento** — as constantes provisórias no topo das seções de `engine.ts` (`INCOMING_K`/`EVASION_K`/`EHP_REF_HIT_FRAC`/`ARMOUR_HIT_K`/poções/CC + os multiplicadores de ailment/fonte no `content.ts`). Testar os arquétipos (elementalista, arqueiro, sangramento, veneno, summoner, totém) no boneco e ajustar até o equilíbrio ficar bom. **É o passo mais valioso agora** — o motor está largo, falta afinar.
 2. **Persistência** ([abaixo](#trilhas-paralelas-depoisjunto-do-polish)): gravar runs/loadout/measured no `store` + localStorage torna histórico/recordes/loadouts do dashboard reais (hoje demonstrativos).
-3. **S1+ — modelo de item rico** ([EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)): qualidade, requisitos, novos afixos (a base de evasão/ES já entrou no M2).
-4. **Afinar o R4/M2** (constantes `INCOMING_K`/`EVASION_K`/`EHP_REF_HIT_FRAC`/poções/CC no topo das seções em `engine.ts`): balanceamento provisório, calibrar com testes.
+3. **S1+ — modelo de item rico** ([EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)): qualidade, requisitos, novos afixos; e **habilidades por arma/classe** (hoje o pool de skills é global).
+4. **Bestiário ativo no lado recebido** — hoje o `simulateDungeon` usa a magnitude do `diff` para o dano recebido; ligar o **golpe real por onda** do bestiário (com chill/shock/freeze ativos e ES vs. DoT recebido) fecha o realismo do relatório.
 
-Notas do motor para quem seguir: o pipeline de **dano** vive em `engine.ts` (`avgHitByType`/`prepareSkill`/`mitigateHit`) e é compartilhado por `aggregate` + `simulateRotation` — mudanças entram uma vez e valem nos dois. A **defesa em camadas** (M2) está no `aggregate` (EHP) e no `mitigatedIncoming`/loop do `simulateDungeon` (ES como buffer). O lado recebido ainda usa a magnitude do `diff` (não o golpe real por onda do bestiário); ligar isso é tuning do M3+.
+Notas do motor para quem seguir: o pipeline de **dano** vive em `engine.ts` (`avgHitByType`/`prepareSkill`/`preparedHit`/`mitigateHit`) e é compartilhado por `aggregate` + `simulateRotation` — mudanças entram uma vez e valem nos dois. O **DPS total** = golpe (rotação) + **DoT** (`sk.ailment`) + **fontes** (`sk.source` minion/totém), tudo somado no `simulateRotation` e exposto em `dotDps`/`sourceDps`/`damageByType`/`perSkill`. A **defesa em camadas** (M2) está no `aggregate` (EHP) e no `mitigatedIncoming`/loop do `simulateDungeon` (ES como buffer). O `fingerprint` inclui equipado+árvore+soquetes+**loadout/ordem**.
 
 Notas: a **galeria** (`?dev=gallery`) mostra os átomos; o **manifesto de tema** ([THEME.md](./THEME.md)) rege os tokens (componentes novos consomem tokens; migração do CSS legado é incremental). O `fingerprint` agora inclui **loadout+ordem** — mexer na rotação esconde o DPS medido (coerente com "números descobertos").
 
@@ -108,11 +110,16 @@ Notas: a **galeria** (`?dev=gallery`) mostra os átomos; o **manifesto de tema**
 3. **Equipamento — equipar (Fase C):** equipar um item do baú → **pulso de encaixe** no slot do manequim.
 4. **Habilidades — Boneco de Treino (R2):** clicar **"Bater no boneco"** → count-up do DPS medido; a **PowerBar** em todas as telas passa a mostrar o medido. Trocar preset **Sem defesa/Elite/Chefe** e o slider de **armadura** → o "DPS contra este alvo" cai conforme a armadura sobe. Conferir o **diagnóstico** (uptime do combo, aproveitamento de recurso, gargalo) e o **dano por skill**.
 5. **Habilidades — editor de Rotação (R3):** reordenar o loadout com **↑/↓**, remover com **✕**, **adicionar** uma skill do pool; ver o **boneco re-simular na hora** e o DPS medido **voltar a esconder** (fingerprint mudou). Confirmar que a **ordem importa** (combo/uptime muda o DPS).
-6. **Masmorra (R4 + Fase C):** enviar o herói e ver o **relatório completo** (inimigos derrotados, dano recebido, poções, tempo sob controle, DPS médio/pico) + count-up "DPS real descoberto". Testar um build **glass cannon** (morre nos encontros lentos) vs. **tank** (completa devagar, vivo); ver a **morte por controle** quando faltar EHP contra CC.
-7. **Árvore (Fase E — teclado):** dar **Tab** até a árvore, navegar com **setas**, **Enter/Espaço** para alocar/reembolsar; foco visível no anel do nó.
-8. **Mobile (Fase E):** no DevTools em modo dispositivo — **pinch-zoom** na árvore, **nav rolável**, alvos de toque grandes; tooltip de item fixável por toque.
-9. **Onboarding (Fase D):** o modal de 4 passos aparece na 1ª sessão (limpe `localStorage` p/ revê-lo, ou clique no **"?"** na barra de topo).
-10. **Acessibilidade geral (Fase E):** **Tab** no topo mostra o **skip-link**; `prefers-reduced-motion` (config do SO/DevTools) deve neutralizar as animações.
+6. **Habilidades — MOTOR COMPLETO (M1–M4), tudo no boneco:**
+   - **M1 multi-tipo:** adicione **Bola de Fogo** (fogo) ou **Flecha Trovejante** (raio) à rotação; mexa nos **sliders de resistência por tipo** do alvo → o DPS cai; veja o **"Dano por tipo"** mudar de físico p/ elemental. Compare com o alvo só-armadura (não afeta elemental).
+   - **M3 ailments/DoT:** adicione **Dilacerar** (sangramento) ou **Toque Pestilento** (veneno, empilha) → surge a fonte **"DoT (contínuo)"** no diagnóstico; suba os nós/suporte de **DoT** (Corrosão) e veja a parcela crescer. Veneno escala com a cadência.
+   - **M4 minions/totens:** adicione **Guarda de Ossos** (minion) ou **Totem Balista** (raio) — selo "Minion/Totém"; eles aparecem no breakdown como fonte contínua; suba os nós/suporte (Comando Feroz/Ancoragem/Legião) e veja o DPS subir. Minion físico sofre a **armadura** do alvo; totém de raio sofre a **resistência a raio**.
+   - **M2 defesas:** no dashboard de **Personagem**, confira **Armadura/Evasão/Esc. energia**; equipe **Traje das Sombras** (evasão) ou **Vestes Arcanas** (ES) e veja a **Vida efetiva** mudar; na comparação de item, as linhas de Evasão/Esc. energia.
+7. **Masmorra (R4 + Fase C):** enviar o herói e ver o **relatório completo** (inimigos derrotados, dano recebido, poções, tempo sob controle, DPS médio/pico) + count-up "DPS real descoberto". Testar um build **glass cannon** (morre nos encontros lentos) vs. **tank** (completa devagar, vivo); ver a **morte por controle** quando faltar EHP contra CC.
+8. **Árvore (Fase E — teclado):** dar **Tab** até a árvore, navegar com **setas**, **Enter/Espaço** para alocar/reembolsar; foco visível no anel do nó. (A árvore ganhou ramos novos: elemental, DoT, evasão/ES e invocação.)
+9. **Mobile (Fase E):** no DevTools em modo dispositivo — **pinch-zoom** na árvore, **nav rolável**, alvos de toque grandes; tooltip de item fixável por toque.
+10. **Onboarding (Fase D):** o modal de 4 passos aparece na 1ª sessão (limpe `localStorage` p/ revê-lo, ou clique no **"?"** na barra de topo).
+11. **Acessibilidade geral (Fase E):** **Tab** no topo mostra o **skip-link**; `prefers-reduced-motion` (config do SO/DevTools) deve neutralizar as animações.
 
 Se algo estiver fora do esperado, anote a fase/tela e me passe — a lista de trocas entra numa branch de ajustes.
 
