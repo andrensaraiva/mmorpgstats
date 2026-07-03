@@ -12,8 +12,17 @@ const AILMENT_LABEL: Record<string, string> = {
   bleed: 'Sangramento', ignite: 'Queimadura', poison: 'Veneno',
 }
 
-/** Selo do tipo de dano da skill (colorido por tipo — M1) + ailment (M3). */
+/** Selo do tipo de dano da skill (colorido por tipo — M1) + ailment (M3) + fonte (M4). */
 function TypeTag({ skill }: { skill: SkillDefinition }) {
+  if (skill.source) {
+    const t = skill.sourceDamageType ?? 'phys'
+    return (
+      <>
+        <span className="type-tag source-tag">{skill.source === 'minion' ? 'Minion' : 'Totém'}</span>
+        <span className={`type-tag dt--${t}`}>{TYPE_LABEL[t]}</span>
+      </>
+    )
+  }
   if (skill.damageMult === 0) return null
   const t = skill.damageType ?? 'phys'
   return (
@@ -59,9 +68,10 @@ export function SkillsPage({ game }: { game: Game }) {
   const cap = game.power.supportCap
   const { loadout } = game.state
   const byId = (id: string) => SKILLS.find((s) => s.id === id)!
-  const damageSkills = SKILLS.filter((s) => s.damageMult > 0)
-  const utilitySkills = SKILLS.filter((s) => s.damageMult === 0)
-  const poolToAdd = damageSkills.filter((s) => !loadout.includes(s.id))
+  // Contribuem DPS: golpes (damageMult>0) e fontes externas (minions/totens).
+  const dpsSkills = SKILLS.filter((s) => s.damageMult > 0 || s.source)
+  const utilitySkills = SKILLS.filter((s) => s.damageMult === 0 && !s.source)
+  const poolToAdd = dpsSkills.filter((s) => !loadout.includes(s.id))
 
   return (
     <>
@@ -89,8 +99,11 @@ export function SkillsPage({ game }: { game: Game }) {
                     {sk.name} <TypeTag skill={sk} />
                   </div>
                   <div className="rs-meta tiny muted">
-                    custo {sk.cost} · {sk.cooldown > 0 ? `rec ${sk.cooldown}s` : 'sem cooldown'}
-                    {sk.castTime > 0 ? ` · cast ${sk.castTime}s` : ''}
+                    {sk.source
+                      ? 'fonte contínua · luta por conta própria (fora da prioridade)'
+                      : `custo ${sk.cost} · ${sk.cooldown > 0 ? `rec ${sk.cooldown}s` : 'sem cooldown'}${
+                          sk.castTime > 0 ? ` · cast ${sk.castTime}s` : ''
+                        }`}
                   </div>
                   <div className="rs-combo-row">
                     {sk.applies ? (

@@ -75,6 +75,9 @@ export type StatKey =
   | 'incElemental'
   // Dano de DoT/ailment aumentado (M3) — guarda-chuva de sangramento/queimadura/veneno.
   | 'incDot'
+  // Dano de fontes externas aumentado (M4): minions e totens/balista.
+  | 'incMinion'
+  | 'incTotem'
   // Penetração da resistência do alvo por tipo (M1).
   | 'firePen'
   | 'coldPen'
@@ -216,6 +219,13 @@ export type MarkId = 'exposure'
  */
 export type AilmentId = 'bleed' | 'ignite' | 'poison'
 
+/**
+ * Fonte de dano externa (M4): não é o golpe próprio do herói, luta por conta.
+ * Minions (esqueletos/feras) e totens/balista têm orçamento de dano próprio e
+ * contribuem um DPS contínuo, independente da rotação ("posiciona e esquece").
+ */
+export type SourceKind = 'minion' | 'totem'
+
 export interface SkillDefinition {
   id: string
   name: string
@@ -260,6 +270,14 @@ export interface SkillDefinition {
   ailmentMult?: number
   /** Duração (s) do ailment aplicado. */
   ailmentDuration?: number
+  /** Fonte externa (M4): minion/totém. Contribui DPS contínuo, fora da rotação. */
+  source?: SourceKind
+  /** Dano por golpe da fonte (min/max). */
+  sourceDamage?: { min: number; max: number }
+  /** Golpes por segundo da fonte. */
+  sourceRate?: number
+  /** Tipo do dano da fonte (default `phys`). */
+  sourceDamageType?: DamageType
   /** Suportes iniciais equipados. */
   defaultSockets: string[]
 }

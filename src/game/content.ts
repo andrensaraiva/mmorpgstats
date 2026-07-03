@@ -348,6 +348,27 @@ export const AFFIX_GROUPS: AffixGroup[] = [
       { tier: 2, ranges: { incDot: [34, 48] }, text: '+{incDot}% dano de DoT aumentado', minItemLevel: 50 },
     ],
   },
+  // ---- M4: dano de fontes (minions/totens) ----
+  {
+    id: 'inc_minion',
+    name: 'Dano de Minions Aumentado',
+    kind: 'prefix',
+    classes: ['jewellery', 'armour'],
+    tiers: [
+      { tier: 4, ranges: { incMinion: [16, 26] }, text: '+{incMinion}% dano de minions', minItemLevel: 1 },
+      { tier: 2, ranges: { incMinion: [36, 52] }, text: '+{incMinion}% dano de minions', minItemLevel: 50 },
+    ],
+  },
+  {
+    id: 'inc_totem',
+    name: 'Dano de Totens Aumentado',
+    kind: 'prefix',
+    classes: ['jewellery', 'weapon'],
+    tiers: [
+      { tier: 4, ranges: { incTotem: [16, 26] }, text: '+{incTotem}% dano de totens', minItemLevel: 1 },
+      { tier: 2, ranges: { incTotem: [36, 52] }, text: '+{incTotem}% dano de totens', minItemLevel: 50 },
+    ],
+  },
   {
     id: 'elem_pen',
     name: 'Penetração Elemental',
@@ -660,6 +681,43 @@ export const SKILLS: SkillDefinition[] = [
     ailmentDuration: 3,
     defaultSockets: [],
   },
+  // ---- M4: fontes externas (minions e totens/balista) ----
+  {
+    id: 'sk_skeletons',
+    name: 'Guarda de Ossos',
+    type: 'spell',
+    glyph: '💀',
+    tags: ['minion', 'invocação', 'persistente', 'físico'],
+    meta: 'FONTE · minions · dano contínuo por conta própria',
+    desc: 'Ergue esqueletos que lutam por você: dano FÍSICO contínuo, independente da sua rotação. Escala com “dano de minion”.',
+    damageMult: 0, // não é golpe da rotação — contribui via fonte
+    source: 'minion',
+    sourceDamage: { min: 40, max: 70 },
+    sourceRate: 2.4,
+    sourceDamageType: 'phys',
+    cost: 0,
+    cooldown: 0,
+    castTime: 0,
+    defaultSockets: [],
+  },
+  {
+    id: 'sk_ballista',
+    name: 'Totem Balista',
+    type: 'spell',
+    glyph: '🏹',
+    tags: ['totem', 'projétil', 'raio', 'persistente', 'elemental'],
+    meta: 'FONTE · totém · dispara sozinho',
+    desc: 'Finca uma balista totêmica que dispara RAIO sozinha: dano contínuo, independente da rotação. Escala com “dano de totém”.',
+    damageMult: 0,
+    source: 'totem',
+    sourceDamage: { min: 30, max: 90 },
+    sourceRate: 1.6,
+    sourceDamageType: 'lightning',
+    cost: 0,
+    cooldown: 0,
+    castTime: 0,
+    defaultSockets: [],
+  },
 ]
 
 /**
@@ -709,6 +767,9 @@ export const SUPPORTS: SupportDefinition[] = [
   { id: 's_ward', name: 'Salvaguarda', match: ['defesa', 'persistente'], note: '+15% evasão e ES', mods: { incEvasion: 15, incEnergyShield: 15 } },
   // ---- M3: suporte de DoT ----
   { id: 's_dot', name: 'Corrosão', match: ['dot'], note: '+25% dano de DoT', mods: { incDot: 25 } },
+  // ---- M4: suportes de fonte (minion/totém) ----
+  { id: 's_minion', name: 'Comando Feroz', match: ['minion'], note: '+30% dano de minions', mods: { incMinion: 30 } },
+  { id: 's_totem', name: 'Ancoragem', match: ['totem'], note: '+30% dano de totens', mods: { incTotem: 30 } },
 ]
 
 export const BEHAVIOR: Array<{ when: string; then: string }> = [
@@ -755,11 +816,14 @@ export const TREE: PassiveTree = {
     // ---- M1: ramo elemental ----
     { id: 'u6', x: 520, y: 158, type: 'small', path: 'util', name: 'Faísca', stat: '+16% dano elemental', mods: { incElemental: 16 } },
     { id: 'u7', x: 588, y: 130, type: 'notable', path: 'util', name: 'Convergência Elemental', stat: '+30% dano elemental, +6% penetração', mods: { incElemental: 30, firePen: 6, coldPen: 6, lightningPen: 6 } },
+    // ---- M4: ramo de invocação (minions/totens) ----
+    { id: 'u8', x: 300, y: 60, type: 'small', path: 'util', name: 'Legião', stat: '+20% dano de minions', mods: { incMinion: 20 } },
+    { id: 'u9', x: 236, y: 96, type: 'notable', path: 'util', name: 'Senhor das Hostes', stat: '+35% dano de minions e de totens', mods: { incMinion: 35, incTotem: 35 } },
   ],
   edges: [
     ['s0', 'o1'], ['o1', 'o2'], ['o2', 'o3'], ['o3', 'o4'], ['o4', 'o5'], ['o1', 'o6'], ['o6', 'o3'], ['o3', 'o7'], ['o7', 'o8'],
     ['s0', 'd1'], ['d1', 'd2'], ['d2', 'd3'], ['d3', 'd4'], ['d4', 'd5'], ['d1', 'd6'], ['d6', 'd3'], ['d2', 'd7'], ['d7', 'd8'],
-    ['s0', 'u1'], ['u1', 'u2'], ['u2', 'u3'], ['u3', 'u4'], ['u4', 'u5'], ['u2', 'u6'], ['u6', 'u7'],
+    ['s0', 'u1'], ['u1', 'u2'], ['u2', 'u3'], ['u3', 'u4'], ['u4', 'u5'], ['u2', 'u6'], ['u6', 'u7'], ['u3', 'u8'], ['u8', 'u9'],
   ],
 }
 

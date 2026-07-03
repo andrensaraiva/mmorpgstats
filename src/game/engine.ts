@@ -443,11 +443,31 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   const ctx = buildContext(equipped, allocated)
   const { max: resMax, regen } = deriveResource(ctx.global)
 
-  // Só skills de dano entram na rotação; utilitárias (damageMult 0) são ignoradas.
+  // Só skills de golpe entram na rotação; utilitárias/fontes (damageMult 0) não.
   const prepared = loadout
     .map((slot) => prepareSkill(ctx, skillById[slot.skillId] ?? BASIC_ATTACK, slot.supports))
     .filter((p) => p.def.damageMult > 0)
   const basic = prepareSkill(ctx, BASIC_ATTACK, [])
+
+  // Fontes externas (M4): minions/totens no loadout contribuem DPS contínuo,
+  // independente da rotação. Cada uma tem orçamento próprio, mitigado pelo alvo.
+  const sourceEntries: Array<{ skillId: string; dps: number; type: DamageType }> = []
+  for (const slot of loadout) {
+    const def = skillById[slot.skillId]
+    if (!def?.source || !def.sourceDamage) continue
+    const inc = def.source === 'minion' ? ctx.global.incMinion ?? 0 : ctx.global.incTotem ?? 0
+    let more = ctx.global.moreDamage ?? 0
+    for (const sid of slot.supports) more += supportById[sid]?.mods.moreDamage ?? 0
+    const st = def.sourceDamageType ?? 'phys'
+    const raw =
+      ((def.sourceDamage.min + def.sourceDamage.max) / 2) *
+      (def.sourceRate ?? 1) *
+      (1 + inc / 100) *
+      (1 + more / 100)
+    const pen = st === 'phys' ? 0 : (ctx.global[PEN_KEY[st] as StatKey] ?? 0)
+    sourceEntries.push({ skillId: def.id, dps: mitigateHit(st, raw, target, pen), type: st })
+  }
+  const sourceDpsTotal = sourceEntries.reduce((s, e) => s + e.dps, 0)
 
   let t = 0
   let resource = resMax
@@ -548,6 +568,15 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   }
   const dotDps = window > 0 ? Math.round(dotDamage / window) : 0
 
+  // Fontes externas (M4): DPS contínuo × janela → soma ao total e ao breakdown.
+  if (window > 0 && sourceDpsTotal > 0) {
+    for (const e of sourceEntries) {
+      total += e.dps * window
+      byType[e.type] = (byType[e.type] ?? 0) + e.dps * window
+    }
+  }
+  const sourceDps = Math.round(sourceDpsTotal)
+
   const dps = window > 0 ? Math.round(total / window) : 0
   const comboUptime = window > 0 ? clamp(markActiveTime / window, 0, 1) : 0
   const resourceUptime = actions > 0 ? clamp(1 - starvedActions / actions, 0, 1) : 1
@@ -561,6 +590,11 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   // O DoT aparece como uma "fonte" própria no breakdown por skill.
   if (dotDamage > 0) {
     perEntries.push({ skillId: 'dot', casts: 0, damage: dotDamage, share: total > 0 ? dotDamage / total : 0 })
+  }
+  // Fontes externas (minions/totens) também entram no breakdown.
+  for (const e of sourceEntries) {
+    const dmg = e.dps * window
+    if (dmg > 0) perEntries.push({ skillId: e.skillId, casts: 0, damage: dmg, share: total > 0 ? dmg / total : 0 })
   }
   const perSkill = perEntries.sort((a, b) => b.damage - a.damage)
 
@@ -584,7 +618,7 @@ export function simulateRotation(input: SimulateInput): RotationResult {
     bottleneck,
     damageByType,
     dotDps,
-    sourceDps: 0, // M4 preenche com minions/totens
+    sourceDps,
     timeline,
   }
 }

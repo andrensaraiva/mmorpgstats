@@ -496,6 +496,73 @@ describe('simulateRotation (simulador de rotação — fatia do M5)', () => {
     expect(resisted.dotDps).toBeLessThan(bare.dotDps) // resistência a caos reduz o veneno
     expect((resisted.damageByType.chaos ?? 0)).toBeGreaterThan(0)
   })
+
+  /* ---------- M4: fontes externas (minions / totens) ---------- */
+
+  it('minion no loadout contribui DPS contínuo (sourceDps > 0), fora da rotação', () => {
+    const { equipped } = starterEquipped()
+    const r = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_skeletons', supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    expect(r.sourceDps).toBeGreaterThan(0)
+    expect(r.dps).toBeGreaterThan(0)
+    expect(r.perSkill.some((s) => s.skillId === 'sk_skeletons')).toBe(true)
+  })
+
+  it('somar um minion à rotação aumenta o DPS total', () => {
+    const { equipped } = starterEquipped()
+    const alone = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    const withMinion = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: [] }, { skillId: 'sk_skeletons', supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    expect(withMinion.dps).toBeGreaterThan(alone.dps)
+    expect(withMinion.sourceDps).toBeGreaterThan(0)
+  })
+
+  it('+dano de minion (suporte/nó) escala a fonte; e a fonte sofre a defesa do alvo', () => {
+    const { equipped } = starterEquipped()
+    const base = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_skeletons', supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    const boosted = simulateRotation({
+      equipped, allocated: ['s0', 'u1', 'u2', 'u3', 'u8', 'u9'], // ramo minion (+55%)
+      loadout: [{ skillId: 'sk_skeletons', supports: ['s_minion'] }], // +30%
+      target: { armour: 0 }, seconds: 8,
+    })
+    const armoured = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_skeletons', supports: [] }],
+      target: { armour: 6000 }, seconds: 8,
+    })
+    expect(boosted.sourceDps).toBeGreaterThan(base.sourceDps)
+    expect(armoured.sourceDps).toBeLessThan(base.sourceDps) // minion físico sofre armadura
+  })
+
+  it('totém de raio contribui e sofre resistência a raio do alvo', () => {
+    const { equipped } = starterEquipped()
+    const bare = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_ballista', supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    const resisted = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: 'sk_ballista', supports: [] }],
+      target: { armour: 0, litRes: 60 }, seconds: 8,
+    })
+    expect(bare.sourceDps).toBeGreaterThan(0)
+    expect(resisted.sourceDps).toBeLessThan(bare.sourceDps)
+  })
 })
 
 describe('simulateDungeon (combate: corrida limpar×morrer, CC, poções)', () => {
