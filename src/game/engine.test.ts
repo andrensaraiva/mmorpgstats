@@ -23,10 +23,13 @@ import {
   levelProgress,
   makeRewardItem,
   makeRng,
+  masteryDamageBonus,
   measuredRotation,
+  MAX_MASTERY,
   resolveItemMods,
   rollExceptionalAffix,
   simulateDungeon,
+  skillMasteryLevel,
   simulateRotation,
   skillAvailability,
   unmetRequirements,
@@ -758,6 +761,36 @@ describe('IT — afixo excepcional (só-dropa)', () => {
       expect(excAfter).toBeTruthy()
       expect(excAfter!.values).toEqual(excBefore.values) // valores intactos
     }
+  })
+})
+
+describe('SK1 — maestria de skill', () => {
+  it('a maestria sobe de nível com XP acumulado (1..MAX)', () => {
+    expect(skillMasteryLevel(0)).toBe(1)
+    expect(skillMasteryLevel(100)).toBe(2)
+    expect(skillMasteryLevel(1_000_000)).toBe(MAX_MASTERY) // satura no teto
+    // Monotônica
+    let prev = 0
+    for (const xp of [0, 150, 400, 800, 1500, 3000]) {
+      const lvl = skillMasteryLevel(xp)
+      expect(lvl).toBeGreaterThanOrEqual(prev)
+      prev = lvl
+    }
+  })
+
+  it('o bônus de maestria escala o DPS da rotação', () => {
+    const { equipped } = starterEquipped()
+    const loadout = [{ skillId: MAIN_SKILL_ID, supports: [] }]
+    const cfg = { equipped, allocated: ['s0'] as string[], loadout, target: { armour: 0 }, seconds: 8 }
+    const noMastery = simulateRotation(cfg)
+    const highMastery = simulateRotation({ ...cfg, mastery: { [MAIN_SKILL_ID]: MAX_MASTERY } })
+    expect(highMastery.dps).toBeGreaterThan(noMastery.dps)
+  })
+
+  it('masteryDamageBonus é 0 no nível 1 e cresce', () => {
+    expect(masteryDamageBonus(1)).toBe(0)
+    expect(masteryDamageBonus(5)).toBeGreaterThan(0)
+    expect(masteryDamageBonus(MAX_MASTERY)).toBeGreaterThan(masteryDamageBonus(2))
   })
 })
 

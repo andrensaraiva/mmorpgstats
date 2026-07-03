@@ -144,6 +144,7 @@ function CampaignEncounter({
       type: 'campaignReward',
       xpGained,
       measured: { fingerprint: game.currentFingerprint, dps: game.power.dps },
+      win: run.survivable,
     })
     if (run.survivable) {
       game.completeCampaignNode(node.id)

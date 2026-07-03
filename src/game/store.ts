@@ -25,6 +25,7 @@ import {
   levelProgress,
   makeRng,
   measuredRotation,
+  skillMasteryLevel,
   slotAccepts,
   treeAdjacency,
 } from './engine'
@@ -98,6 +99,8 @@ export interface GameState {
   completedNodes: string[]
   /** Sistemas destravados pela campanha (P2). */
   unlockedSystems: SystemId[]
+  /** XP de maestria por skillId (SK1) — sobe usando a skill em vitórias. */
+  skillXp: Record<string, number>
   inventory: ItemInstance[]
   equipped: Partial<Record<EquipSlot, string>>
   allocated: Set<string>
@@ -126,6 +129,7 @@ function initState(): GameState {
     xp: 0,
     completedNodes: [],
     unlockedSystems: [],
+    skillXp: {},
     inventory: starter.inventory,
     equipped: starter.equipped,
     allocated: new Set(TREE.preAlloc),
@@ -168,10 +172,18 @@ type Action =
   | { type: 'pushToast'; tone: ToastTone; message: string }
   | { type: 'dismissToast'; id: number }
   | { type: 'completeCampaignNode'; nodeId: string }
-  | { type: 'campaignReward'; xpGained: number; measured: Measured | null }
+  | { type: 'campaignReward'; xpGained: number; measured: Measured | null; win: boolean }
   | { type: 'addItem'; item: ItemInstance; toast?: string; tone?: ToastTone }
 
 const adjacency = treeAdjacency()
+
+/** XP de maestria concedido a cada skill do loadout numa vitória (SK1). */
+const MASTERY_XP_WIN = 60
+
+const skillNameById = Object.fromEntries(SKILLS.map((s) => [s.id, s.name]))
+function skillName(id: string): string {
+  return skillNameById[id] ?? id
+}
 
 /** Rótulo dos sistemas destravados pela campanha (P2). */
 const SYSTEM_LABEL: Record<SystemId, string> = {
@@ -192,6 +204,22 @@ const MAX_TOASTS = 4
 function withToast(toasts: Toast[], tone: ToastTone, message: string): Toast[] {
   const next = [...toasts, { id: ++toastSeq, tone, message }]
   return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
+}
+
+/**
+ * XP de maestria (SK1) distribuído às skills de dano do loadout numa vitória.
+ * Devolve o novo mapa skillXp e as skills que subiram de maestria (p/ toast).
+ */
+function awardMastery(state: GameState, amount: number): { skillXp: Record<string, number>; leveled: string[] } {
+  const skillXp = { ...state.skillXp }
+  const leveled: string[] = []
+  for (const id of state.loadout) {
+    const before = skillMasteryLevel(skillXp[id] ?? 0)
+    skillXp[id] = (skillXp[id] ?? 0) + amount
+    const after = skillMasteryLevel(skillXp[id])
+    if (after > before) leveled.push(id)
+  }
+  return { skillXp, leveled }
 }
 
 /** Tom do toast conforme a raridade resultante de um craft. */
@@ -325,9 +353,17 @@ function reducer(state: GameState, action: Action): GameState {
           `DPS real descoberto: ${Math.round(action.measured.dps).toLocaleString('pt-BR')}`,
         )
       }
+      // Maestria de skill (SK1): vencer treina as skills do loadout.
+      let skillXp = state.skillXp
+      if (action.result.win) {
+        const m = awardMastery(state, MASTERY_XP_WIN)
+        skillXp = m.skillXp
+        for (const id of m.leveled) toasts = withToast(toasts, 'good', `★ Maestria: ${skillName(id)} subiu`)
+      }
       return {
         ...state,
         xp,
+        skillXp,
         attemptPhase: 'report',
         attemptResult: action.result,
         measured: action.measured ?? state.measured,
@@ -368,7 +404,13 @@ function reducer(state: GameState, action: Action): GameState {
       let toasts = state.toasts
       if (gained > 0) toasts = withToast(toasts, 'good', `+${gained.toLocaleString('pt-BR')} XP`)
       if (after > before) toasts = withToast(toasts, 'loot', `⬆ Nível ${after}!`)
-      return { ...state, xp, measured: action.measured ?? state.measured, toasts }
+      let skillXp = state.skillXp
+      if (action.win) {
+        const m = awardMastery(state, MASTERY_XP_WIN)
+        skillXp = m.skillXp
+        for (const id of m.leveled) toasts = withToast(toasts, 'good', `★ Maestria: ${skillName(id)} subiu`)
+      }
+      return { ...state, xp, skillXp, measured: action.measured ?? state.measured, toasts }
     }
 
     case 'addItem': {
@@ -421,12 +463,19 @@ export function selectLoadoutSlots(state: GameState): SkillSlot[] {
   return state.loadout.map((skillId) => ({ skillId, supports: state.sockets[skillId] ?? [] }))
 }
 
+/** Nível de maestria por skillId (SK1), derivado do skillXp. */
+export function selectMastery(state: GameState): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const [id, xp] of Object.entries(state.skillXp)) out[id] = skillMasteryLevel(xp)
+  return out
+}
+
 export function selectPower(state: GameState): Power {
   const equipped = selectEquippedItems(state)
   const power = aggregate({ equipped, allocated: state.allocated, sockets: state.sockets })
   // O DPS-âncora da build é o da ROTAÇÃO (sim vs alvo neutro), não o do golpe
   // único do aggregate. Estimativa, medido e dungeon passam a falar a mesma língua.
-  const rotation = measuredRotation(equipped, state.allocated, selectLoadoutSlots(state))
+  const rotation = measuredRotation(equipped, state.allocated, selectLoadoutSlots(state), selectMastery(state))
   return { ...power, dps: rotation.dps }
 }
 

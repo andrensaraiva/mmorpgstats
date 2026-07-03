@@ -4696,6 +4696,26 @@ a {
   color: #8fe0d4;
 }
 
+/* selo de maestria de skill (SK1) */
+.mastery {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.mastery__lbl {
+  font-family: 'Cinzel', serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  color: var(--gold-hi);
+}
+.mastery__bonus {
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: #8fd07a;
+}
+
 /* ===================== P1 — CAMPANHA ===================== */
 .camp-trail {
   list-style: none;

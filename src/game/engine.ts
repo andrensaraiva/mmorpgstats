@@ -221,6 +221,35 @@ export function dungeonXp(dungeonLevel: number, win: boolean, clearedFraction = 
   return Math.round(win ? base : base * 0.25 * clamp(clearedFraction, 0, 1))
 }
 
+/* ===================== MAESTRIA DE SKILL (SK1) ===================== */
+/*
+   Cada skill ganha XP ao ser levada numa dungeon vencida e sobe de maestria
+   (1..MAX). Cada nível concede +MASTERY_BONUS% de dano ÀQUELA skill — usar a
+   skill a evolui (à la árvore de skill do Last Epoch, versão enxuta e pura).
+*/
+
+export const MAX_MASTERY = 10
+/** +% de `more` de dano por nível de maestria acima de 1. */
+export const MASTERY_BONUS_PER_LEVEL = 4
+
+/** Nível de maestria (1..MAX_MASTERY) para um XP de skill acumulado. */
+export function skillMasteryLevel(skillXp: number): number {
+  let lvl = 1
+  // Cada nível pede 100 × nível de XP (curva suave).
+  let need = 0
+  for (let n = 1; n < MAX_MASTERY; n++) {
+    need += 100 * n
+    if (skillXp >= need) lvl = n + 1
+    else break
+  }
+  return lvl
+}
+
+/** Bônus de `more` de dano (%) concedido pela maestria de uma skill. */
+export function masteryDamageBonus(masteryLevel: number): number {
+  return (clamp(masteryLevel, 1, MAX_MASTERY) - 1) * MASTERY_BONUS_PER_LEVEL
+}
+
 /* ===================== POWER MODEL ===================== */
 
 const supportById = Object.fromEntries(SUPPORTS.map((s) => [s.id, s]))
@@ -462,9 +491,9 @@ interface PreparedSkill {
   ailmentDpsBase: number
 }
 
-function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[]): PreparedSkill {
+function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[], extraMore = 0): PreparedSkill {
   const skillMods: StatMods = { ...ctx.global }
-  let moreBase = ctx.global.moreDamage ?? 0
+  let moreBase = (ctx.global.moreDamage ?? 0) + extraMore
   const lessDamage = ctx.global.lessDamage ?? 0
   for (const sid of supports) {
     const sup = supportById[sid]
@@ -549,6 +578,8 @@ export interface SimulateInput {
   target: TargetProfile
   /** Janela de medição (s). */
   seconds: number
+  /** Nível de maestria por skillId (SK1) — bônus de dano por skill. */
+  mastery?: Record<string, number>
 }
 
 /**
@@ -558,13 +589,14 @@ export interface SimulateInput {
  * consome recurso, dispara cooldown e soma o dano; ao fim, DPS = dano/tempo.
  */
 export function simulateRotation(input: SimulateInput): RotationResult {
-  const { equipped, allocated, loadout, target, seconds } = input
+  const { equipped, allocated, loadout, target, seconds, mastery } = input
   const ctx = buildContext(equipped, allocated)
   const { max: resMax, regen } = deriveResource(ctx.global)
+  const masteryMore = (id: string) => masteryDamageBonus(mastery?.[id] ?? 1)
 
   // Só skills de golpe entram na rotação; utilitárias/fontes (damageMult 0) não.
   const prepared = loadout
-    .map((slot) => prepareSkill(ctx, skillById[slot.skillId] ?? BASIC_ATTACK, slot.supports))
+    .map((slot) => prepareSkill(ctx, skillById[slot.skillId] ?? BASIC_ATTACK, slot.supports, masteryMore(slot.skillId)))
     .filter((p) => p.def.damageMult > 0)
   const basic = prepareSkill(ctx, BASIC_ATTACK, [])
 
@@ -756,8 +788,9 @@ export function measuredRotation(
   equipped: ItemInstance[],
   allocated: Set<string> | string[],
   loadout: SkillSlot[],
+  mastery?: Record<string, number>,
 ): RotationResult {
-  return simulateRotation({ equipped, allocated, loadout, target: NEUTRAL_TARGET, seconds: MEASURE_WINDOW })
+  return simulateRotation({ equipped, allocated, loadout, target: NEUTRAL_TARGET, seconds: MEASURE_WINDOW, mastery })
 }
 
 /** Dano relativo de uma habilidade dada sua lista de suportes. */

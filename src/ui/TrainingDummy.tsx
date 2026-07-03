@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 import { BASIC_ATTACK, SKILLS } from '../game/content'
 import { MEASURE_WINDOW, simulateRotation } from '../game/engine'
-import { selectEquippedItems, selectLoadoutSlots, type Game } from '../game/store'
+import { selectEquippedItems, selectLoadoutSlots, selectMastery, type Game } from '../game/store'
 import type { DamageType, RotationBottleneck, TargetProfile } from '../game/types'
 import { Panel, PowerBar } from './atoms'
 import { fmtInt } from './format'
@@ -74,6 +74,7 @@ export function TrainingDummy({ game }: { game: Game }) {
   const [target, setTarget] = useState<TargetProfile>({ armour: 0 })
   const equipped = useMemo(() => selectEquippedItems(game.state), [game.state])
   const slots = useMemo(() => selectLoadoutSlots(game.state), [game.state])
+  const mastery = useMemo(() => selectMastery(game.state), [game.state])
 
   const result = useMemo(
     () =>
@@ -83,8 +84,9 @@ export function TrainingDummy({ game }: { game: Game }) {
         loadout: slots,
         target,
         seconds: MEASURE_WINDOW,
+        mastery,
       }),
-    [equipped, game.state.allocated, slots, target],
+    [equipped, game.state.allocated, slots, target, mastery],
   )
 
   const byType = Object.entries(result.damageByType)

@@ -132,6 +132,13 @@ Decisões trazidas de [ARPG_RESEARCH.md](./ARPG_RESEARCH.md) que afetam este des
 
 Faseamento: o **trilho determinístico** e o **afixo excepcional** entram junto/depois de S1 (modelo de item rico); as **facções** são uma decisão de meta/liga que pode vir em paralelo; **loot filter + comparação** acompanham S2 (tooltip/descrição).
 
+## 8.6 Mecânicas-assinatura de skill (novas, baseadas no gênero)
+
+Além do combo/rotação (R1–R3), duas mecânicas dão identidade própria às habilidades:
+
+- ✅ **SK1 — Maestria de skill. CONCLUÍDO (03/jul).** Cada skill ganha **XP ao ser levada numa dungeon/marco vencido** e sobe de maestria (1..`MAX_MASTERY` 10); cada nível concede **+4% de dano ÀQUELA skill** (`skillMasteryLevel`/`masteryDamageBonus`, entra no `simulateRotation` via `mastery`). Usar a skill a evolui — versão enxuta e pura da árvore de skill do Last Epoch. `skillXp` no store; toast ao subir; selo na tela de Habilidades.
+- ⏳ **SK2 — Selo elemental (próximo):** um soquete que **converte o tipo de dano/ailment** de uma skill (ex.: golpe físico → fogo com queimadura), criando builds novas a partir de skills existentes. Reusa o motor multi-tipo (M1) e DoT (M3).
+
 ## 9. Fora de escopo por ora (registrado)
 
 - Grade de inventário com tamanho de item (1x1, 2x2…) estilo Tetris — começamos com lista/grade simples de células iguais.

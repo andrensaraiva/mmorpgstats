@@ -1,10 +1,22 @@
 import { SKILLS, SUPPORTS } from '../game/content'
-import { skillAvailability } from '../game/engine'
+import { MAX_MASTERY, masteryDamageBonus, skillAvailability, skillMasteryLevel } from '../game/engine'
 import { selectEquippedItems } from '../game/store'
 import type { Game } from '../game/store'
 import type { DamageType, SkillDefinition } from '../game/types'
 import { PageHead, Panel } from '../ui/atoms'
 import { TrainingDummy } from '../ui/TrainingDummy'
+
+/** Selo de maestria de uma skill (SK1): nível + bônus de dano. */
+function MasteryBadge({ xp }: { xp: number }) {
+  const lvl = skillMasteryLevel(xp)
+  const bonus = masteryDamageBonus(lvl)
+  return (
+    <span className="mastery" title={`Maestria ${lvl}/${MAX_MASTERY}${bonus ? ` · +${bonus}% dano da skill` : ''}`}>
+      <span className="mastery__lbl">★ Maestria {lvl}</span>
+      {bonus ? <span className="mastery__bonus">+{bonus}%</span> : null}
+    </span>
+  )
+}
 
 const TYPE_LABEL: Record<DamageType, string> = {
   phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
@@ -109,6 +121,7 @@ export function SkillsPage({ game }: { game: Game }) {
                 <div className="re-main">
                   <div className="rs-name">
                     {sk.name} <TypeTag skill={sk} />
+                    <MasteryBadge xp={game.state.skillXp[id] ?? 0} />
                   </div>
                   <div className="rs-meta tiny muted">
                     {sk.source
