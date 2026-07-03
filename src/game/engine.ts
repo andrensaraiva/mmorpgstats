@@ -49,6 +49,7 @@ import type {
   TargetProfile,
   TickEvent,
   TreeNode,
+  WeaponType,
 } from './types'
 
 /* ---------- RNG ---------- */
@@ -81,11 +82,23 @@ export function addMods(target: StatMods, src?: StatMods): StatMods {
   return target
 }
 
-/** Implícito da base + valores de todos os afixos rolados. */
+/**
+ * Implícito da base + defesas-base (amplificadas pela qualidade) + afixos.
+ * Qualidade (S1) amplia só a **base local** (defesas da base e dano da arma),
+ * não os afixos — fiel ao gênero.
+ */
 export function resolveItemMods(item: ItemInstance): StatMods {
   const base = getBase(item.baseId)
   const total: StatMods = {}
   addMods(total, base.implicit)
+  // Defesas da base, escaladas pela qualidade.
+  if (base.defences) {
+    const q = 1 + (item.quality ?? 0) / 100
+    if (base.defences.armour) total.armour = (total.armour ?? 0) + Math.round(base.defences.armour * q)
+    if (base.defences.evasion) total.evasion = (total.evasion ?? 0) + Math.round(base.defences.evasion * q)
+    if (base.defences.energyShield)
+      total.energyShield = (total.energyShield ?? 0) + Math.round(base.defences.energyShield * q)
+  }
   for (const a of item.affixes) addMods(total, a.values)
   return total
 }
@@ -102,6 +115,65 @@ const RING_SLOTS: EquipSlot[] = ['ring1', 'ring2']
 export function slotAccepts(base: ItemBase, slot: EquipSlot): boolean {
   if (base.kind === 'ring') return RING_SLOTS.includes(slot)
   return base.kind === slot
+}
+
+/** Requisitos de um item para equipar (S1) — atributos do herói + nível. */
+export interface HeroReqStats {
+  level: number
+  str: number
+  dex: number
+  int: number
+}
+
+/** Quais requisitos do item o herói NÃO atende (vazio = pode equipar). */
+export function unmetRequirements(item: ItemInstance, hero: HeroReqStats): Array<'level' | 'str' | 'dex' | 'int'> {
+  const req = getBase(item.baseId).requires
+  if (!req) return []
+  const out: Array<'level' | 'str' | 'dex' | 'int'> = []
+  if (req.level && hero.level < req.level) out.push('level')
+  if (req.str && hero.str < req.str) out.push('str')
+  if (req.dex && hero.dex < req.dex) out.push('dex')
+  if (req.int && hero.int < req.int) out.push('int')
+  return out
+}
+
+/** Tipos de arma atualmente equipados (S3). */
+export function equippedWeaponTypes(equipped: ItemInstance[]): WeaponType[] {
+  const out: WeaponType[] = []
+  for (const it of equipped) {
+    const wt = getBase(it.baseId).weaponType
+    if (wt) out.push(wt)
+  }
+  return out
+}
+
+/**
+ * Uma skill está disponível (S3) se a arma equipada casa com `requires.weapon`
+ * (ou a skill não exige arma) e o herói atende ao nível. Devolve por que está
+ * travada, quando estiver.
+ */
+export function skillAvailability(
+  skill: SkillDefinition,
+  equipped: ItemInstance[],
+  level: number,
+): { available: boolean; reason?: 'weapon' | 'level' } {
+  const req = skill.requires
+  if (!req) return { available: true }
+  if (req.level && level < req.level) return { available: false, reason: 'level' }
+  if (req.weapon && req.weapon.length > 0) {
+    const wts = equippedWeaponTypes(equipped)
+    if (!req.weapon.some((w) => wts.includes(w))) return { available: false, reason: 'weapon' }
+  }
+  return { available: true }
+}
+
+/** Catálogo filtrado: as skills disponíveis para a arma+nível atuais (S3). */
+export function availableSkills(
+  skills: SkillDefinition[],
+  equipped: ItemInstance[],
+  level: number,
+): SkillDefinition[] {
+  return skills.filter((s) => skillAvailability(s, equipped, level).available)
 }
 
 /* ===================== POWER MODEL ===================== */
@@ -163,8 +235,10 @@ function buildContext(equipped: ItemInstance[], allocated: Set<string> | string[
   for (const item of equipped) {
     const base = getBase(item.baseId)
     if (base.weapon) {
-      weaponPhysMin = base.weapon.physMin
-      weaponPhysMax = base.weapon.physMax
+      // Qualidade (S1) amplia o dano físico da arma.
+      const q = 1 + (item.quality ?? 0) / 100
+      weaponPhysMin = base.weapon.physMin * q
+      weaponPhysMax = base.weapon.physMax * q
       weaponAps = base.weapon.attackSpeed
     }
     addMods(global, resolveItemMods(item))

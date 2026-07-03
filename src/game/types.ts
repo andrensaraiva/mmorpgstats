@@ -105,20 +105,56 @@ export type StatKey =
   | 'supportCap'
   | 'moreDamage'
   | 'lessDamage'
+  // Famílias de afixo do item rico (S1).
+  | 'moveSpeed'
+  | 'flatMana'
+  | 'stunThreshold'
 
 export type StatMods = Partial<Record<StatKey, number>>
 
 /* ---------- bases de item ---------- */
+
+/** Tipos de arma (S3): governam quais habilidades ficam disponíveis. */
+export type WeaponType =
+  | 'axe'
+  | 'mace'
+  | 'sword'
+  | 'dagger'
+  | 'bow'
+  | 'crossbow'
+  | 'staff'
+  | 'wand'
+
+/** Defesas base de um item (S1) — antes de afixos/qualidade. */
+export interface BaseDefences {
+  armour?: number
+  evasion?: number
+  energyShield?: number
+}
+
+/** Requisitos da base para equipar (S1). Afixos não mudam requisito. */
+export interface ItemRequirements {
+  level?: number
+  str?: number
+  dex?: number
+  int?: number
+}
 
 export interface ItemBase {
   id: string
   name: string
   kind: BaseKind
   itemClass: ItemClass
+  /** Tipo de arma (S3) — só armas; decide o pool de habilidades. */
+  weaponType?: WeaponType
   /** Contrato de assets: id do ícone (Fase A). Ausente = deriva de `kind`. */
   icon?: string
   /** Dano físico base + velocidade de ataque (só armas). */
   weapon?: { physMin: number; physMax: number; attackSpeed: number }
+  /** Defesas base (S1) — armadura/evasão/ES; qualidade as amplifica. */
+  defences?: BaseDefences
+  /** Requisitos para equipar (S1). */
+  requires?: ItemRequirements
   /** Modificador implícito fixo da base. */
   implicit?: StatMods
   implicitText?: string
@@ -165,6 +201,8 @@ export interface ItemInstance {
   baseId: string
   rarity: Rarity
   itemLevel: number
+  /** Qualidade 0–20% (S1) — amplifica as defesas/dano da base. */
+  quality?: number
   affixes: RolledAffix[]
   corrupted: boolean
   /** Preenchido quando é um único (afixos fixos + flavor). */
@@ -220,6 +258,17 @@ export type MarkId = 'exposure'
 export type AilmentId = 'bleed' | 'ignite' | 'poison'
 
 /**
+ * Requisito de uma habilidade (S3): a arma equipada e/ou o nível mínimo.
+ * Sem `weapon` = serve para qualquer arma. Ver EQUIPMENT_SKILLS §5.
+ */
+export interface SkillRequirement {
+  /** Tipos de arma que liberam a skill (qualquer um deles). Ausente = todas. */
+  weapon?: WeaponType[]
+  /** Nível mínimo do herói. */
+  level?: number
+}
+
+/**
  * Fonte de dano externa (M4): não é o golpe próprio do herói, luta por conta.
  * Minions (esqueletos/feras) e totens/balista têm orçamento de dano próprio e
  * contribuem um DPS contínuo, independente da rotação ("posiciona e esquece").
@@ -270,6 +319,8 @@ export interface SkillDefinition {
   ailmentMult?: number
   /** Duração (s) do ailment aplicado. */
   ailmentDuration?: number
+  /** Requisito de arma/nível (S3): decide se a skill está disponível. */
+  requires?: SkillRequirement
   /** Fonte externa (M4): minion/totém. Contribui DPS contínuo, fora da rotação. */
   source?: SourceKind
   /** Dano por golpe da fonte (min/max). */

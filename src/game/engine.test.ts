@@ -9,6 +9,7 @@ import {
 } from './content'
 import {
   aggregate,
+  availableSkills,
   canCraft,
   connectedToStart,
   craft,
@@ -20,8 +21,10 @@ import {
   resolveItemMods,
   simulateDungeon,
   simulateRotation,
+  skillAvailability,
+  unmetRequirements,
 } from './engine'
-import type { ItemInstance, Power } from './types'
+import type { ItemInstance, Power, SkillDefinition } from './types'
 
 function starterEquipped(): { equipped: ItemInstance[]; map: Record<string, string> } {
   const starter = makeStarter()
@@ -619,6 +622,59 @@ describe('simulateDungeon (combate: corrida limpar×morrer, CC, poções)', () =
     const shielded = simulateDungeon(crypt, { ...glass(), energyShield: 3000 })
     // O ES é um pool extra: absorve dano antes da vida → limpa mais do encontro.
     expect(shielded.report.enemiesDefeated).toBeGreaterThan(bare.report.enemiesDefeated)
+  })
+})
+
+describe('S — item rico (qualidade, requisitos) e skills por arma', () => {
+  const skillById = (id: string) => SKILLS.find((s) => s.id === id) as SkillDefinition
+
+  it('qualidade amplia o dano físico da arma (mais DPS)', () => {
+    const { equipped } = starterEquipped()
+    // A arma do starter (war_axe) tem quality 20; zerar deve baixar o DPS.
+    const wpnIdx = equipped.findIndex((i) => i.baseId === 'war_axe')
+    const noQ = equipped.map((i, k) => (k === wpnIdx ? { ...i, quality: 0 } : i))
+    const withQ = aggregate({ equipped, allocated: ['s0'], sockets: {} })
+    const without = aggregate({ equipped: noQ, allocated: ['s0'], sockets: {} })
+    expect(withQ.dps).toBeGreaterThan(without.dps)
+  })
+
+  it('qualidade amplia as defesas da base (mais EHP)', () => {
+    // Peitoral de placas: defences.armour 220; qualidade sobe a armadura.
+    const plain: ItemInstance = {
+      uid: 'q0', baseId: 'plate_chest', rarity: 'common', itemLevel: 60, corrupted: false,
+      name: 'Peitoral', affixes: [], quality: 0,
+    }
+    const qual: ItemInstance = { ...plain, uid: 'q20', quality: 20 }
+    expect((resolveItemMods(qual).armour ?? 0)).toBeGreaterThan(resolveItemMods(plain).armour ?? 0)
+  })
+
+  it('requisitos: aponta os atributos que o herói não atende', () => {
+    const axe: ItemInstance = {
+      uid: 'r1', baseId: 'war_axe', rarity: 'common', itemLevel: 40, corrupted: false, name: 'Machado', affixes: [],
+    }
+    // war_axe requer nível 32, 60 For, 30 Des.
+    const weak = unmetRequirements(axe, { level: 10, str: 10, dex: 10, int: 10 })
+    expect(weak).toContain('level')
+    expect(weak).toContain('str')
+    const strong = unmetRequirements(axe, { level: 40, str: 80, dex: 40, int: 40 })
+    expect(strong).toHaveLength(0)
+  })
+
+  it('skillAvailability: skill de arco fica travada com machado equipado', () => {
+    const { equipped } = starterEquipped() // machado (axe)
+    const arrow = skillById('sk_shock_arrow') // requires bow/crossbow
+    const strike = skillById('sk_strike') // requires axe/mace/sword
+    expect(skillAvailability(arrow, equipped, 99).available).toBe(false)
+    expect(skillAvailability(arrow, equipped, 99).reason).toBe('weapon')
+    expect(skillAvailability(strike, equipped, 99).available).toBe(true)
+  })
+
+  it('availableSkills filtra o catálogo pela arma equipada', () => {
+    const { equipped } = starterEquipped()
+    const ids = availableSkills(SKILLS, equipped, 99).map((s) => s.id)
+    expect(ids).toContain('sk_strike') // corpo-a-corpo, ok com machado
+    expect(ids).not.toContain('sk_shock_arrow') // arco, travada
+    expect(ids).not.toContain('sk_fireball') // cajado/varinha, travada
   })
 })
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { classById, getBase } from '../game/content'
-import { itemGlyph, resolveItemMods } from '../game/engine'
+import { itemGlyph, resolveItemMods, unmetRequirements } from '../game/engine'
+import type { HeroReqStats } from '../game/engine'
 import type { ItemInstance, Power } from '../game/types'
 import type { CharacterSummary } from '../game/session'
 import { estimateRange } from '../game/engine'
@@ -211,9 +212,21 @@ export function HeroBoard({
 
 /* ---------- tooltip de item ---------- */
 
-/** Conteúdo do tooltip de item (sem o contêiner), reutilizável no tooltip flutuante. */
-export function ItemTooltipBody({ item }: { item: ItemInstance }) {
+/** Conteúdo do tooltip de item (sem o contêiner), reutilizável no tooltip flutuante.
+ *  Padrão PoE2 (S2): nome/base, qualidade, defesas, requisitos (vermelho se o
+ *  herói não atende), implícito, afixos, flavor. */
+export function ItemTooltipBody({ item, hero }: { item: ItemInstance; hero?: HeroReqStats | null }) {
   const base = getBase(item.baseId)
+  const mods = resolveItemMods(item)
+  const req = base.requires
+  const unmet = hero ? unmetRequirements(item, hero) : []
+
+  // Defesas resolvidas (base×qualidade), só as presentes.
+  const defs: Array<[string, number]> = []
+  if (mods.armour) defs.push(['Armadura', mods.armour])
+  if (mods.evasion) defs.push(['Evasão', mods.evasion])
+  if (mods.energyShield) defs.push(['Esc. energia', mods.energyShield])
+
   return (
     <>
       <div className={`it-name ${rarClass(item.rarity)}`}>
@@ -223,8 +236,36 @@ export function ItemTooltipBody({ item }: { item: ItemInstance }) {
       <div className="it-base">
         {base.name} · {RARITY_LABEL[item.rarity]} · nv item {item.itemLevel}
       </div>
-      {base.implicitText || item.affixes.length ? <div className="it-sep" /> : null}
-      {base.implicitText ? <div className="it-impl">{base.implicitText}</div> : null}
+
+      {item.quality || defs.length || req ? <div className="it-sep" /> : null}
+      {item.quality ? <div className="it-quality">Qualidade: +{item.quality}%</div> : null}
+      {defs.length ? (
+        <div className="it-defs">
+          {defs.map(([k, v]) => (
+            <span className="it-def" key={k}>
+              {k}: <b>{fmtInt(v)}</b>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {req ? (
+        <div className="it-req">
+          Requer:{' '}
+          {req.level ? <ReqPart label={`Nível ${req.level}`} bad={unmet.includes('level')} /> : null}
+          {req.str ? <ReqPart label={`${req.str} For`} bad={unmet.includes('str')} /> : null}
+          {req.dex ? <ReqPart label={`${req.dex} Des`} bad={unmet.includes('dex')} /> : null}
+          {req.int ? <ReqPart label={`${req.int} Int`} bad={unmet.includes('int')} /> : null}
+        </div>
+      ) : null}
+
+      {base.implicitText ? (
+        <>
+          <div className="it-sep" />
+          <div className="it-impl">{base.implicitText}</div>
+        </>
+      ) : null}
+
+      {item.affixes.length ? <div className="it-sep" /> : null}
       {item.affixes.map((a, i) =>
         item.rarity === 'unique' ? (
           <div className="it-uniq" key={i}>
@@ -239,6 +280,11 @@ export function ItemTooltipBody({ item }: { item: ItemInstance }) {
       {item.flavor ? <div className="it-uniq it-flavor">{item.flavor}</div> : null}
     </>
   )
+}
+
+/** Um requisito no tooltip — cinza se atendido, vermelho se não. */
+function ReqPart({ label, bad }: { label: string; bad: boolean }) {
+  return <span className={`it-req__part${bad ? ' is-bad' : ''}`}>{label}</span>
 }
 
 export function ItemTooltip({ item }: { item: ItemInstance }) {

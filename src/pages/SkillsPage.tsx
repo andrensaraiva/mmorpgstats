@@ -1,4 +1,6 @@
 import { SKILLS, SUPPORTS } from '../game/content'
+import { skillAvailability } from '../game/engine'
+import { selectEquippedItems } from '../game/store'
 import type { Game } from '../game/store'
 import type { DamageType, SkillDefinition } from '../game/types'
 import { PageHead, Panel } from '../ui/atoms'
@@ -6,6 +8,11 @@ import { TrainingDummy } from '../ui/TrainingDummy'
 
 const TYPE_LABEL: Record<DamageType, string> = {
   phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
+}
+
+const WEAPON_LABEL: Record<string, string> = {
+  axe: 'Machado', mace: 'Maça', sword: 'Espada', dagger: 'Adaga',
+  bow: 'Arco', crossbow: 'Besta', staff: 'Cajado', wand: 'Varinha',
 }
 
 const AILMENT_LABEL: Record<string, string> = {
@@ -68,6 +75,11 @@ export function SkillsPage({ game }: { game: Game }) {
   const cap = game.power.supportCap
   const { loadout } = game.state
   const byId = (id: string) => SKILLS.find((s) => s.id === id)!
+  // Disponibilidade por arma equipada (S3). Nível alto por ora (o gate de
+  // demonstração é a arma; o nível liga quando a progressão for real).
+  const equipped = selectEquippedItems(game.state)
+  const HERO_LEVEL = 99
+  const avail = (s: SkillDefinition) => skillAvailability(s, equipped, HERO_LEVEL)
   // Contribuem DPS: golpes (damageMult>0) e fontes externas (minions/totens).
   const dpsSkills = SKILLS.filter((s) => s.damageMult > 0 || s.source)
   const utilitySkills = SKILLS.filter((s) => s.damageMult === 0 && !s.source)
@@ -150,22 +162,40 @@ export function SkillsPage({ game }: { game: Game }) {
         <div className="eyebrow mt10 mb6">Adicionar à rotação</div>
         {poolToAdd.length ? (
           <div className="pool-add">
-            {poolToAdd.map((sk) => (
-              <button key={sk.id} className="pool-chip" onClick={() => game.toggleLoadout(sk.id)}>
-                <span className={`skill-gem gem--${sk.type}`}>{sk.glyph}</span>
-                <span className="pc-main">
-                  <span className="rs-name">
-                    {sk.name} <TypeTag skill={sk} />
+            {poolToAdd.map((sk) => {
+              const a = avail(sk)
+              const lockMsg =
+                a.reason === 'weapon'
+                  ? `Requer arma: ${(sk.requires?.weapon ?? []).map((w) => WEAPON_LABEL[w]).join(', ')}`
+                  : a.reason === 'level'
+                    ? `Requer nível ${sk.requires?.level}`
+                    : ''
+              return (
+                <button
+                  key={sk.id}
+                  className={`pool-chip${a.available ? '' : ' is-locked'}`}
+                  onClick={() => a.available && game.toggleLoadout(sk.id)}
+                  disabled={!a.available}
+                  title={a.available ? undefined : lockMsg}
+                >
+                  <span className={`skill-gem gem--${sk.type}`}>{a.available ? sk.glyph : '🔒'}</span>
+                  <span className="pc-main">
+                    <span className="rs-name">
+                      {sk.name} <TypeTag skill={sk} />
+                    </span>
+                    <span className="tiny muted">{a.available ? sk.desc : lockMsg}</span>
                   </span>
-                  <span className="tiny muted">{sk.desc}</span>
-                </span>
-                <span className="pc-add">+ adicionar</span>
-              </button>
-            ))}
+                  <span className="pc-add">{a.available ? '+ adicionar' : 'travada'}</span>
+                </button>
+              )
+            })}
           </div>
         ) : (
           <div className="tiny muted">Todas as habilidades de dano já estão na rotação.</div>
         )}
+        <div className="tiny muted mt6">
+          Skills <b>travadas</b> pedem outra arma equipada — troque a arma no Equipamento para liberar o leque.
+        </div>
       </Panel>
 
       <Panel title="Utilitárias & auras">

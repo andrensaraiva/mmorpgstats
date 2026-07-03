@@ -4695,3 +4695,44 @@ a {
 .source-tag {
   color: #8fe0d4;
 }
+
+/* skill travada por arma (S3) */
+.pool-chip.is-locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.pool-chip.is-locked:hover {
+  border-color: var(--line2);
+}
+
+/* ===================== S2 — TOOLTIP RICO (padrão PoE2) ===================== */
+
+.it-quality {
+  font-size: 12px;
+  color: var(--spectral-hi);
+}
+.it-defs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+.it-def b {
+  color: var(--parch);
+}
+.it-req {
+  font-size: 11px;
+  color: var(--text-mut);
+}
+.it-req__part::after {
+  content: ', ';
+}
+.it-req__part:last-child::after {
+  content: '';
+}
+.it-req__part.is-bad {
+  color: var(--blood-hi);
+  font-weight: 700;
+}
