@@ -446,6 +446,15 @@ export const SKILLS: SkillDefinition[] = [
 ]
 
 /**
+ * Loadout inicial: a rotação padrão, em ordem de **prioridade**. A Onda Sísmica
+ * vem antes do Golpe Rompedor de propósito — ela abre a Exposição no cooldown e
+ * o Golpe enche os intervalos já potencializado. Reordenar (chega no R3) muda o
+ * DPS e invalida o número medido. Só skills de dano entram; utilitárias são
+ * ignoradas pela medição.
+ */
+export const STARTER_LOADOUT: string[] = ['sk_wave', 'sk_strike']
+
+/**
  * Ataque básico de retaguarda: entra quando nenhuma ativa da rotação está
  * pronta (em cooldown) ou o recurso não paga a próxima. Grátis, mult baixo —
  * é o piso que garante que a simulação nunca trava e o sinal de "sem recurso".

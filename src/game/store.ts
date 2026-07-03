@@ -10,6 +10,7 @@ import {
   MAIN_SKILL_ID,
   SKILLS,
   STARTER_CURRENCY,
+  STARTER_LOADOUT,
   TREE,
   getBase,
   makeStarter,
@@ -20,6 +21,7 @@ import {
   craft as craftItem,
   fingerprint,
   makeRng,
+  measuredRotation,
   slotAccepts,
   treeAdjacency,
 } from './engine'
@@ -32,6 +34,7 @@ import type {
   Measured,
   OrbId,
   Power,
+  SkillSlot,
   ViewId,
 } from './types'
 
@@ -79,6 +82,8 @@ export interface GameState {
   equipped: Partial<Record<EquipSlot, string>>
   allocated: Set<string>
   sockets: Record<string, string[]>
+  /** Rotação: skillIds de dano em ordem de prioridade (a reordenar no R3). */
+  loadout: string[]
   currency: CurrencyPouch
   selectedDungeon: string
   selectedItemUid: string | null
@@ -102,6 +107,7 @@ function initState(): GameState {
     equipped: starter.equipped,
     allocated: new Set(TREE.preAlloc),
     sockets: Object.fromEntries(SKILLS.map((s) => [s.id, s.defaultSockets.slice()])),
+    loadout: [...STARTER_LOADOUT],
     currency: { ...STARTER_CURRENCY },
     selectedDungeon: 'd-crypt',
     selectedItemUid: starter.inventory[0]?.uid ?? null,
@@ -131,6 +137,7 @@ type Action =
   | { type: 'selectDungeon'; id: string }
   | { type: 'attemptRun' }
   | { type: 'attemptFinish'; result: AttemptResult; measured: Measured | null }
+  | { type: 'measure'; measured: Measured }
   | { type: 'attemptReset' }
   | { type: 'notice'; message: string | null }
   | { type: 'pushToast'; tone: ToastTone; message: string }
@@ -261,6 +268,17 @@ function reducer(state: GameState, action: Action): GameState {
           : state.toasts,
       }
 
+    case 'measure':
+      return {
+        ...state,
+        measured: action.measured,
+        toasts: withToast(
+          state.toasts,
+          'info',
+          `DPS real registrado: ${Math.round(action.measured.dps).toLocaleString('pt-BR')}`,
+        ),
+      }
+
     case 'attemptReset':
       return { ...state, attemptPhase: 'idle', attemptResult: null }
 
@@ -300,16 +318,22 @@ export function selectEquippedItems(state: GameState): ItemInstance[] {
   return out
 }
 
+/** A rotação como SkillSlot[] (skill + suportes), na ordem de prioridade. */
+export function selectLoadoutSlots(state: GameState): SkillSlot[] {
+  return state.loadout.map((skillId) => ({ skillId, supports: state.sockets[skillId] ?? [] }))
+}
+
 export function selectPower(state: GameState): Power {
-  return aggregate({
-    equipped: selectEquippedItems(state),
-    allocated: state.allocated,
-    sockets: state.sockets,
-  })
+  const equipped = selectEquippedItems(state)
+  const power = aggregate({ equipped, allocated: state.allocated, sockets: state.sockets })
+  // O DPS-âncora da build é o da ROTAÇÃO (sim vs alvo neutro), não o do golpe
+  // único do aggregate. Estimativa, medido e dungeon passam a falar a mesma língua.
+  const rotation = measuredRotation(equipped, state.allocated, selectLoadoutSlots(state))
+  return { ...power, dps: rotation.dps }
 }
 
 export function selectFingerprint(state: GameState): string {
-  return fingerprint(state.equipped, state.allocated, state.sockets)
+  return fingerprint(state.equipped, state.allocated, state.sockets, state.loadout)
 }
 
 export function itemByUid(state: GameState, uid: string | null): ItemInstance | null {
@@ -371,6 +395,11 @@ export function useGame() {
   const selectDungeon = useCallback((id: string) => dispatch({ type: 'selectDungeon', id }), [])
   const resetAttempt = useCallback(() => dispatch({ type: 'attemptReset' }), [])
 
+  /** Bater no boneco: registra o DPS canônico (rotação vs alvo neutro) como medido. */
+  const measureDummy = useCallback(() => {
+    dispatch({ type: 'measure', measured: { fingerprint: currentFingerprint, dps: power.dps } })
+  }, [currentFingerprint, power.dps])
+
   const applyCraft = useCallback(
     (orb: OrbId) => {
       const item = itemByUid(state, state.selectedItemUid)
@@ -405,6 +434,7 @@ export function useGame() {
     toggleSocket,
     selectDungeon,
     resetAttempt,
+    measureDummy,
     applyCraft,
     pushToast,
     dismissToast,

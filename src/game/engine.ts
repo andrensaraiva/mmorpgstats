@@ -385,6 +385,24 @@ export function simulateRotation(input: SimulateInput): RotationResult {
   return { dps, window, perSkill, comboUptime, resourceUptime, bottleneck, timeline }
 }
 
+/** Janela (s) e alvo padrão da medição do DPS canônico (o "número descoberto"). */
+export const MEASURE_WINDOW = 12
+export const NEUTRAL_TARGET: TargetProfile = { armour: 0 }
+
+/**
+ * DPS canônico da build: a rotação medida contra um alvo **sem defesa** (o
+ * dano bruto da rotação). É o número que flui como estimativa/medido em todas
+ * as telas; o boneco também mede contra alvos com defesa, mas isso é
+ * exploração — o registro oficial usa o alvo neutro para ser comparável.
+ */
+export function measuredRotation(
+  equipped: ItemInstance[],
+  allocated: Set<string> | string[],
+  loadout: SkillSlot[],
+): RotationResult {
+  return simulateRotation({ equipped, allocated, loadout, target: NEUTRAL_TARGET, seconds: MEASURE_WINDOW })
+}
+
 /** Dano relativo de uma habilidade dada sua lista de suportes. */
 export function skillRelativeDamage(skillId: string, sockets: Record<string, string[]>): number {
   const skill = SKILLS.find((s) => s.id === skillId)
@@ -404,6 +422,7 @@ export function fingerprint(
   equipped: Partial<Record<EquipSlot, string>>,
   allocated: Set<string> | string[],
   sockets: Record<string, string[]>,
+  loadout: string[],
 ): string {
   const eq = Object.keys(equipped)
     .sort()
@@ -414,7 +433,10 @@ export function fingerprint(
     .sort()
     .map((k) => `${k}:${(sockets[k] ?? []).join('+')}`)
     .join('|')
-  return `${eq}#${alloc}#${sk}`
+  // A ordem do loadout é a prioridade da rotação — logo, NÃO é ordenada aqui:
+  // reordenar a rotação muda a build e invalida o DPS medido.
+  const lo = loadout.join('>')
+  return `${eq}#${alloc}#${sk}#${lo}`
 }
 
 /** Faixa de estimativa exibida enquanto o DPS real não foi medido (±15%). */

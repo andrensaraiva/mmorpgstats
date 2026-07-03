@@ -3,6 +3,7 @@ import {
   DUNGEONS,
   MAIN_SKILL_ID,
   SKILLS,
+  STARTER_LOADOUT,
   makeStarter,
   makeUnique,
 } from './content'
@@ -15,6 +16,7 @@ import {
   dungeonReplay,
   fingerprint,
   makeRng,
+  measuredRotation,
   resolveItemMods,
   simulateRotation,
 } from './engine'
@@ -179,18 +181,27 @@ describe('dungeonReplay (minimapa)', () => {
 })
 
 describe('fingerprint (números descobertos)', () => {
+  const loadout = ['sk_wave', 'sk_strike']
+
   it('muda quando um item equipado troca de instância', () => {
     const { map } = starterEquipped()
-    const a = fingerprint(map, ['s0'], defaultSockets)
-    const b = fingerprint({ ...map, weapon: 'outro_uid' }, ['s0'], defaultSockets)
+    const a = fingerprint(map, ['s0'], defaultSockets, loadout)
+    const b = fingerprint({ ...map, weapon: 'outro_uid' }, ['s0'], defaultSockets, loadout)
     expect(a).not.toBe(b)
   })
 
-  it('é estável para a mesma build', () => {
+  it('é estável para a mesma build (ordem de alocação não importa)', () => {
     const { map } = starterEquipped()
-    expect(fingerprint(map, ['s0', 'o1'], defaultSockets)).toBe(
-      fingerprint(map, ['o1', 's0'], defaultSockets),
+    expect(fingerprint(map, ['s0', 'o1'], defaultSockets, loadout)).toBe(
+      fingerprint(map, ['o1', 's0'], defaultSockets, loadout),
     )
+  })
+
+  it('muda quando a ORDEM do loadout muda (a rotação faz parte da build)', () => {
+    const { map } = starterEquipped()
+    const a = fingerprint(map, ['s0'], defaultSockets, ['sk_wave', 'sk_strike'])
+    const b = fingerprint(map, ['s0'], defaultSockets, ['sk_strike', 'sk_wave'])
+    expect(a).not.toBe(b)
   })
 })
 
@@ -328,6 +339,14 @@ describe('simulateRotation (simulador de rotação — fatia do M5)', () => {
       seconds: 12,
     }
     expect(simulateRotation(cfg)).toEqual(simulateRotation(cfg))
+  })
+
+  it('o STARTER_LOADOUT padrão é uma boa rotação (combo em uptime alto, DPS canônico > 0)', () => {
+    const { equipped } = starterEquipped()
+    const slots = STARTER_LOADOUT.map((id) => ({ skillId: id, supports: supportsOf(id) }))
+    const r = measuredRotation(equipped, ['s0'], slots) // mesmo caminho do selectPower/boneco
+    expect(r.dps).toBeGreaterThan(0)
+    expect(r.comboUptime).toBeGreaterThan(0.7)
   })
 
   it('ignora skills utilitárias (damageMult 0) na medição de DPS, caindo no básico', () => {

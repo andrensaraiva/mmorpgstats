@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ORBS, getBase } from '../game/content'
-import { aggregate, canCraft } from '../game/engine'
-import { itemByUid, selectEquippedItems } from '../game/store'
+import { aggregate, canCraft, measuredRotation } from '../game/engine'
+import { itemByUid, selectEquippedItems, selectLoadoutSlots } from '../game/store'
 import type { Game, LastCraft } from '../game/store'
 import type { BaseKind, EquipSlot, ItemInstance, OrbId, Rarity } from '../game/types'
 import { RARITY_LABEL, fmtInt, rarClass } from '../ui/format'
@@ -446,12 +446,14 @@ function ComparePanel({ game, item }: { game: Game; item: ItemInstance }) {
 
   const cur = game.power
   const cand = aggregate({ equipped: candidateEquipped, allocated: st.allocated, sockets: st.sockets })
+  // DPS-âncora = o da rotação (coerente com a headline); o candidato roda a mesma sim.
+  const candDps = measuredRotation(candidateEquipped, st.allocated, selectLoadoutSlots(st)).dps
 
   const isEquipped = Object.values(st.equipped).includes(item.uid)
   const vsName = curUid ? equippedItems.find((i) => i.uid === curUid)?.name ?? 'equipado' : 'slot vazio'
 
   const rows: Array<[string, number, number, string]> = [
-    ['DPS (est.)', Math.round(cur.dps), Math.round(cand.dps), ''],
+    ['DPS (est.)', Math.round(cur.dps), Math.round(candDps), ''],
     ['Vida efetiva', cur.ehp, cand.ehp, ''],
     ['Armadura', cur.armour, cand.armour, ''],
     ['Res. Fogo', cur.fireRes, cand.fireRes, '%'],

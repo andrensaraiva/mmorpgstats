@@ -79,7 +79,7 @@ export function PowerBar({ power, knownDps }: { power: Power; knownDps: number |
           k="DPS (medido)"
           cls="dmg"
           v={fmtInt(knownDps)}
-          sub="testado em dungeon"
+          sub="medido no boneco/dungeon"
           reveal
         />
       ) : (
@@ -88,7 +88,7 @@ export function PowerBar({ power, knownDps }: { power: Power; knownDps: number |
           k="DPS (estimado)"
           cls="dmg est"
           v={`≈ ${fmtInt(lo)}–${fmtInt(hi)}`}
-          sub="teste numa dungeon p/ o real"
+          sub="bata no boneco p/ o real"
         />
       )}
       <PStat k="Vida efetiva" cls="def" v={fmtInt(power.ehp)} sub="sobrevivência" />
@@ -165,9 +165,9 @@ export function PowerDetails({ power, knownDps }: { power: Power; knownDps: numb
     <div>
       <div className="hb-head">
         {knownDps != null ? (
-          <PStat k="DPS (medido)" cls="dmg" v={fmtInt(knownDps)} sub="testado em dungeon" />
+          <PStat k="DPS (medido)" cls="dmg" v={fmtInt(knownDps)} sub="medido no boneco/dungeon" />
         ) : (
-          <PStat k="DPS (estimado)" cls="dmg est" v={`≈ ${fmtInt(lo)}–${fmtInt(hi)}`} sub="teste numa dungeon p/ o real" />
+          <PStat k="DPS (estimado)" cls="dmg est" v={`≈ ${fmtInt(lo)}–${fmtInt(hi)}`} sub="bata no boneco p/ o real" />
         )}
         <PStat k="Vida efetiva" cls="def" v={fmtInt(power.ehp)} sub="sobrevivência" />
       </div>

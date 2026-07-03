@@ -1,21 +1,16 @@
 import { BEHAVIOR, SKILLS, SUPPORTS } from '../game/content'
 import { skillRelativeDamage } from '../game/engine'
 import type { Game } from '../game/store'
-import { PageHead, Panel, PowerBar } from '../ui/atoms'
+import { PageHead, Panel } from '../ui/atoms'
+import { TrainingDummy } from '../ui/TrainingDummy'
 
 export function SkillsPage({ game }: { game: Game }) {
   const cap = game.power.supportCap
 
   return (
     <>
-      <PageHead title="Habilidades" crumb="Encaixe suportes e veja o dano mudar" />
-      <Panel title="Poder de combate">
-        <PowerBar power={game.power} knownDps={game.knownDps} />
-        <div className="tiny muted mt8">
-          Suportes de dano aumentam o DPS do golpe principal — e portanto reduzem o tempo das dungeons. O nó
-          <b> Estrategista</b> na árvore libera um soquete extra.
-        </div>
-      </Panel>
+      <PageHead title="Habilidades" crumb="Monte a rotação e meça o DPS no boneco" />
+      <TrainingDummy game={game} />
 
       <Panel title="Habilidades equipadas">
         {SKILLS.map((sk) => {
