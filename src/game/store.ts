@@ -27,6 +27,7 @@ import {
   measuredRotation,
   skillMasteryLevel,
   slotAccepts,
+  talentPoints,
   treeAdjacency,
 } from './engine'
 import type {
@@ -132,7 +133,8 @@ function initState(): GameState {
     skillXp: {},
     inventory: starter.inventory,
     equipped: starter.equipped,
-    allocated: new Set(TREE.preAlloc),
+    // Começa só na origem: os pontos de talento são ganhos e gastos pelo jogador (PT).
+    allocated: new Set(['s0']),
     sockets: Object.fromEntries(SKILLS.map((s) => [s.id, s.defaultSockets.slice()])),
     loadout: [...STARTER_LOADOUT],
     currency: { ...STARTER_CURRENCY },
@@ -268,8 +270,9 @@ function reducer(state: GameState, action: Action): GameState {
       }
       const adjacentAllocated = (adjacency[action.nodeId] ?? []).some((nb) => allocated.has(nb))
       if (!adjacentAllocated) return { ...state, notice: 'Nó desconectado: aloque primeiro um vizinho.' }
-      if (pointsUsed(allocated) >= TREE.maxPoints) {
-        return { ...state, notice: `Sem pontos: limite de ${TREE.maxPoints} atingido.` }
+      const total = talentPoints(levelForXp(state.xp), state.completedNodes.length)
+      if (pointsUsed(allocated) >= total) {
+        return { ...state, notice: `Sem pontos de talento. Suba de nível ou vença marcos para ganhar mais.` }
       }
       allocated.add(action.nodeId)
       return { ...state, allocated, notice: null }
@@ -470,6 +473,13 @@ export function selectMastery(state: GameState): Record<string, number> {
   return out
 }
 
+/** Pontos de talento: total ganho, gastos e disponíveis (PT). */
+export function selectTalent(state: GameState): { total: number; used: number; available: number } {
+  const total = talentPoints(levelForXp(state.xp), state.completedNodes.length)
+  const used = state.allocated.size - 1 // origem não conta
+  return { total, used, available: Math.max(0, total - used) }
+}
+
 export function selectPower(state: GameState): Power {
   const equipped = selectEquippedItems(state)
   const power = aggregate({ equipped, allocated: state.allocated, sockets: state.sockets })
@@ -505,6 +515,8 @@ export function useGame() {
   /** Progressão (P1): nível e barra de XP derivados do xp acumulado. */
   const level = useMemo(() => levelForXp(state.xp), [state.xp])
   const progress = useMemo(() => levelProgress(state.xp), [state.xp])
+  /** Pontos de talento (PT): total/gastos/disponíveis. */
+  const talent = useMemo(() => selectTalent(state), [state])
 
   const navigate = useCallback((page: ViewId) => {
     dispatch({ type: 'navigate', page })
@@ -583,6 +595,7 @@ export function useGame() {
     knownDps,
     level,
     progress,
+    talent,
     currentFingerprint,
     mainSkillId: MAIN_SKILL_ID,
     navigate,

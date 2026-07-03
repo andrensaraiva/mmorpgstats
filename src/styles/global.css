@@ -4700,6 +4700,18 @@ a {
   border-style: dashed;
 }
 
+/* dica contextual (PT) — pontos de talento a gastar, etc. */
+.talent-hint {
+  margin-bottom: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--teal);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: rgb(40 90 80 / 18%);
+  color: var(--teal-hi);
+  font-size: 0.9rem;
+}
+
 /* selo de maestria de skill (SK1) */
 .mastery {
   display: inline-flex;

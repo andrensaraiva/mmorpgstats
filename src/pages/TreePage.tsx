@@ -177,8 +177,14 @@ export function TreePage({ game }: { game: Game }) {
     <>
       <PageHead
         title="Árvore Passiva"
-        crumb={`Zoom com a roda, arraste para mover · limite de ${TREE.maxPoints} pontos`}
+        crumb="Gaste pontos de talento para esculpir a build · ganha 1 por nível + bônus por marco"
       />
+      {game.talent.available > 0 ? (
+        <div className="talent-hint">
+          ✦ Você tem <b>{game.talent.available}</b> ponto{game.talent.available > 1 ? 's' : ''} de talento para gastar —
+          clique num nó conectado para alocá-lo.
+        </div>
+      ) : null}
       <section className="panel">
         <div className="panel__head">
           <span className="ph-l">Planejamento de Build</span>
@@ -189,7 +195,8 @@ export function TreePage({ game }: { game: Game }) {
         <div className="panel__body">
           <div className="tree-hud">
             <div className="tree-points">
-              Pontos: <b>{used}</b> / {TREE.maxPoints}
+              Pontos: <b>{game.talent.used}</b> gastos ·{' '}
+              <b className={game.talent.available > 0 ? 'teal' : ''}>{game.talent.available}</b> disponíveis
             </div>
             <div>
               <button className="btn btn--sm" onClick={() => zoom(1 / 1.2)}>
@@ -214,7 +221,7 @@ export function TreePage({ game }: { game: Game }) {
               viewBox="0 0 860 470"
               preserveAspectRatio="xMidYMid meet"
               role="group"
-              aria-label={`Árvore passiva — ${used} de ${TREE.maxPoints} pontos alocados. Use Tab para focar um nó, setas para navegar, Enter para alocar ou reembolsar.`}
+              aria-label={`Árvore passiva — ${game.talent.used} pontos alocados, ${game.talent.available} disponíveis. Use Tab para focar um nó, setas para navegar, Enter para alocar ou reembolsar.`}
             >
               <defs>
                 <linearGradient id="goldgrad" x1="0" y1="0" x2="1" y2="1">
@@ -246,7 +253,7 @@ export function TreePage({ game }: { game: Game }) {
                     canAlloc={
                       !allocated.has(n.id) &&
                       (adjacency[n.id] ?? []).some((nb) => allocated.has(nb)) &&
-                      used < TREE.maxPoints
+                      game.talent.available > 0
                     }
                     isFocus={n.id === focusId}
                     onEnter={() => setDetail(n.id)}

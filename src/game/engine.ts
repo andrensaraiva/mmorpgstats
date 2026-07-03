@@ -221,6 +221,12 @@ export function dungeonXp(dungeonLevel: number, win: boolean, clearedFraction = 
   return Math.round(win ? base : base * 0.25 * clamp(clearedFraction, 0, 1))
 }
 
+/** Pontos de talento ganhos: 1 por nível (a partir do 2) + bônus por marco. */
+export const TALENT_PER_MARK = 2
+export function talentPoints(level: number, marksCompleted: number): number {
+  return Math.max(0, level - 1) + marksCompleted * TALENT_PER_MARK
+}
+
 /* ===================== MAESTRIA DE SKILL (SK1) ===================== */
 /*
    Cada skill ganha XP ao ser levada numa dungeon vencida e sobe de maestria

@@ -32,6 +32,7 @@ import {
   skillMasteryLevel,
   simulateRotation,
   skillAvailability,
+  talentPoints,
   unmetRequirements,
   xpForLevel,
 } from './engine'
@@ -773,6 +774,13 @@ describe('P1 — progressão (XP / nível)', () => {
     expect(dungeonXp(10, true)).toBeGreaterThan(dungeonXp(10, false, 1))
     expect(dungeonXp(20, true)).toBeGreaterThan(dungeonXp(5, true))
     expect(dungeonXp(10, false, 0)).toBe(0) // perdeu sem limpar nada
+  })
+
+  it('pontos de talento: 1 por nível (a partir do 2) + bônus por marco', () => {
+    expect(talentPoints(1, 0)).toBe(0)
+    expect(talentPoints(5, 0)).toBe(4) // 4 níveis acima do 1
+    expect(talentPoints(1, 2)).toBe(4) // 2 marcos × 2
+    expect(talentPoints(10, 3)).toBe(9 + 6)
   })
 })
 
