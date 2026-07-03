@@ -31,8 +31,8 @@ const AILMENT_LABEL: Record<string, string> = {
   bleed: 'Sangramento', ignite: 'Queimadura', poison: 'Veneno',
 }
 
-/** Selo do tipo de dano da skill (colorido por tipo — M1) + ailment (M3) + fonte (M4). */
-function TypeTag({ skill }: { skill: SkillDefinition }) {
+/** Selo do tipo de dano da skill (M1) + ailment (M3) + fonte (M4) + conversão por selo (SK2). */
+function TypeTag({ skill, sockets = [] }: { skill: SkillDefinition; sockets?: string[] }) {
   if (skill.source) {
     const t = skill.sourceDamageType ?? 'phys'
     return (
@@ -43,11 +43,15 @@ function TypeTag({ skill }: { skill: SkillDefinition }) {
     )
   }
   if (skill.damageMult === 0) return null
-  const t = skill.damageType ?? 'phys'
+  // Um selo elemental socketado converte o tipo de dano/ailment (SK2).
+  const seal = sockets.map((id) => SUPPORTS.find((s) => s.id === id)).find((s) => s?.convertsTo)
+  const t = seal?.convertsTo ?? skill.damageType ?? 'phys'
+  const ailment = seal?.addsAilment ?? skill.ailment
   return (
     <>
       <span className={`type-tag dt--${t}`}>{TYPE_LABEL[t]}</span>
-      {skill.ailment ? <span className="type-tag ailment-tag">☠ {AILMENT_LABEL[skill.ailment]}</span> : null}
+      {seal ? <span className="type-tag seal-tag" title={`Selado: ${seal.name}`}>◈ selado</span> : null}
+      {ailment ? <span className="type-tag ailment-tag">☠ {AILMENT_LABEL[ailment]}</span> : null}
     </>
   )
 }
@@ -120,7 +124,7 @@ export function SkillsPage({ game }: { game: Game }) {
                 <span className={`skill-gem gem--${sk.type}`}>{sk.glyph}</span>
                 <div className="re-main">
                   <div className="rs-name">
-                    {sk.name} <TypeTag skill={sk} />
+                    {sk.name} <TypeTag skill={sk} sockets={game.state.sockets[id] ?? []} />
                     <MasteryBadge xp={game.state.skillXp[id] ?? 0} />
                   </div>
                   <div className="rs-meta tiny muted">

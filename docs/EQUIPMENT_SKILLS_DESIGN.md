@@ -137,7 +137,7 @@ Faseamento: o **trilho determinístico** e o **afixo excepcional** entram junto/
 Além do combo/rotação (R1–R3), duas mecânicas dão identidade própria às habilidades:
 
 - ✅ **SK1 — Maestria de skill. CONCLUÍDO (03/jul).** Cada skill ganha **XP ao ser levada numa dungeon/marco vencido** e sobe de maestria (1..`MAX_MASTERY` 10); cada nível concede **+4% de dano ÀQUELA skill** (`skillMasteryLevel`/`masteryDamageBonus`, entra no `simulateRotation` via `mastery`). Usar a skill a evolui — versão enxuta e pura da árvore de skill do Last Epoch. `skillXp` no store; toast ao subir; selo na tela de Habilidades.
-- ⏳ **SK2 — Selo elemental (próximo):** um soquete que **converte o tipo de dano/ailment** de uma skill (ex.: golpe físico → fogo com queimadura), criando builds novas a partir de skills existentes. Reusa o motor multi-tipo (M1) e DoT (M3).
+- ✅ **SK2 — Selo elemental. CONCLUÍDO (03/jul).** Um suporte **selo** (`SupportDefinition.convertsTo`/`addsAilment`) **converte o tipo de dano** de uma skill e pode adicionar um ailment: o `prepareSkill` move todo o dano por tipo para o tipo do selo e troca o ailment efetivo. Ex.: **Selo de Brasa** faz o Golpe Rompedor (físico) virar **fogo com queimadura** — passa a ignorar armadura e a sofrer res. a fogo. Selos de Gelo/Tempestade/Pestilento (frio/raio/caos+veneno). Cria builds novas a partir de skills existentes reusando M1 (multi-tipo) e M3 (DoT). UI: a tela de Habilidades mostra o tipo convertido + "◈ selado". **+3 testes.**
 
 ## 9. Fora de escopo por ora (registrado)
 

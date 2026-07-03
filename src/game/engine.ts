@@ -495,11 +495,16 @@ function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[
   const skillMods: StatMods = { ...ctx.global }
   let moreBase = (ctx.global.moreDamage ?? 0) + extraMore
   const lessDamage = ctx.global.lessDamage ?? 0
+  // Selo elemental (SK2): converte o tipo de dano / adiciona ailment.
+  let convertsTo: DamageType | undefined
+  let addsAilment: AilmentId | undefined
   for (const sid of supports) {
     const sup = supportById[sid]
     if (!sup) continue
     addMods(skillMods, sup.mods)
     moreBase += sup.mods.moreDamage ?? 0
+    if (sup.convertsTo) convertsTo = sup.convertsTo
+    if (sup.addsAilment) addsAilment = sup.addsAilment
   }
   const critChance = clamp(5 + (skillMods.critChance ?? 0), 0, 100)
   const critMulti = 150 + (skillMods.critMulti ?? 0)
@@ -509,8 +514,15 @@ function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[
   const scale = critFactor * def.damageMult * (1 - lessDamage / 100)
 
   const avg = avgHitByType(ctx, def, skillMods)
-  const perHitByType: DamageByType = {}
+  let perHitByType: DamageByType = {}
   for (const dt of Object.keys(avg) as DamageType[]) perHitByType[dt] = (avg[dt] ?? 0) * scale
+
+  // Conversão de tipo (SK2): move TODO o dano por tipo para o tipo do selo.
+  if (convertsTo) {
+    let sum = 0
+    for (const dt of Object.keys(perHitByType) as DamageType[]) sum += perHitByType[dt] ?? 0
+    perHitByType = { [convertsTo]: sum }
+  }
 
   const pen: Record<DamageType, number> = {
     phys: 0,
@@ -520,15 +532,19 @@ function prepareSkill(ctx: BuildContext, def: SkillDefinition, supports: string[
     chaos: skillMods.chaosPen ?? 0,
   }
 
+  // Ailment efetivo: o próprio da skill OU o adicionado por um selo (SK2/SK3).
+  const effAilment = addsAilment ?? def.ailment
+
   // DoT/s que um golpe aplica (M3): fração do dano do golpe (do tipo do ailment)
   // × (1 + incDot). A mitigação por resistência entra no tick, como no hit.
   let ailmentDpsBase = 0
-  if (def.ailment) {
-    const at = AILMENT_TYPE[def.ailment]
+  if (effAilment) {
+    const at = AILMENT_TYPE[effAilment]
     const hitOfType = (perHitByType[at] ?? 0) * (1 + moreBase / 100)
-    ailmentDpsBase = hitOfType * (def.ailmentMult ?? 0) * (1 + (skillMods.incDot ?? 0) / 100)
+    ailmentDpsBase = hitOfType * (def.ailmentMult ?? 0.4) * (1 + (skillMods.incDot ?? 0) / 100)
   }
-  return { def, actionTime, perHitByType, moreBase, pen, ailmentDpsBase }
+  const effDef = effAilment !== def.ailment ? { ...def, ailment: effAilment } : def
+  return { def: effDef, actionTime, perHitByType, moreBase, pen, ailmentDpsBase }
 }
 
 /** Mitigação do alvo para um golpe de dano `raw` de um dado tipo. */

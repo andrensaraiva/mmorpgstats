@@ -562,6 +562,63 @@ describe('simulateRotation (simulador de rotação — fatia do M5)', () => {
     expect(armoured.sourceDps).toBeLessThan(base.sourceDps) // minion físico sofre armadura
   })
 
+  /* ---------- SK2: selo elemental (converte o tipo de dano) ---------- */
+
+  it('selo de fogo converte um golpe físico para fogo (passa a sofrer res. a fogo, não armadura)', () => {
+    const { equipped } = starterEquipped()
+    const plain = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    const sealed = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: ['seal_fire'] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    // O dano vira FOGO: some parcela física, aparece parcela de fogo.
+    expect(sealed.damageByType.fire ?? 0).toBeGreaterThan(0)
+    expect(sealed.damageByType.phys ?? 0).toBe(0)
+    expect(plain.damageByType.phys ?? 0).toBeGreaterThan(0)
+
+    // Contra armadura, o físico é mitigado mas o fogo selado não.
+    const plainArmoured = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: [] }],
+      target: { armour: 6000 }, seconds: 8,
+    })
+    const sealedArmoured = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: ['seal_fire'] }],
+      target: { armour: 6000 }, seconds: 8,
+    })
+    expect(sealedArmoured.dps).toBeGreaterThan(plainArmoured.dps) // fogo ignora armadura
+  })
+
+  it('selo de fogo faz o golpe aplicar queimadura (DoT surge)', () => {
+    const { equipped } = starterEquipped()
+    const noSeal = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: [] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    const sealed = simulateRotation({
+      equipped, allocated: ['s0'],
+      loadout: [{ skillId: MAIN_SKILL_ID, supports: ['seal_fire'] }],
+      target: { armour: 0 }, seconds: 8,
+    })
+    expect(noSeal.dotDps).toBe(0) // Golpe Rompedor não tem ailment próprio
+    expect(sealed.dotDps).toBeGreaterThan(0) // o selo adicionou queimadura
+  })
+
+  it('golpe selado de fogo sofre a resistência a fogo do alvo', () => {
+    const { equipped } = starterEquipped()
+    const loadout = [{ skillId: MAIN_SKILL_ID, supports: ['seal_fire'] }]
+    const bare = simulateRotation({ equipped, allocated: ['s0'], loadout, target: { armour: 0 }, seconds: 8 })
+    const resisted = simulateRotation({ equipped, allocated: ['s0'], loadout, target: { armour: 0, fireRes: 60 }, seconds: 8 })
+    expect(resisted.dps).toBeLessThan(bare.dps)
+  })
+
   it('totém de raio contribui e sofre resistência a raio do alvo', () => {
     const { equipped } = starterEquipped()
     const bare = simulateRotation({

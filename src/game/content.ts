@@ -833,6 +833,11 @@ export const SUPPORTS: SupportDefinition[] = [
   // ---- M4: suportes de fonte (minion/totém) ----
   { id: 's_minion', name: 'Comando Feroz', match: ['minion'], note: '+30% dano de minions', mods: { incMinion: 30 } },
   { id: 's_totem', name: 'Ancoragem', match: ['totem'], note: '+30% dano de totens', mods: { incTotem: 30 } },
+  // ---- SK2: SELOS ELEMENTAIS — convertem o tipo de dano da skill ----
+  { id: 'seal_fire', name: 'Selo de Brasa', match: ['ataque', 'conjuração'], note: 'converte p/ FOGO + queimadura', mods: {}, convertsTo: 'fire', addsAilment: 'ignite' },
+  { id: 'seal_cold', name: 'Selo de Gelo', match: ['ataque', 'conjuração'], note: 'converte p/ FRIO', mods: {}, convertsTo: 'cold' },
+  { id: 'seal_lightning', name: 'Selo de Tempestade', match: ['ataque', 'conjuração'], note: 'converte p/ RAIO', mods: {}, convertsTo: 'lightning' },
+  { id: 'seal_chaos', name: 'Selo Pestilento', match: ['ataque', 'conjuração'], note: 'converte p/ CAOS + veneno', mods: {}, convertsTo: 'chaos', addsAilment: 'poison' },
 ]
 
 export const BEHAVIOR: Array<{ when: string; then: string }> = [

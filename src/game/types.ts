@@ -438,6 +438,14 @@ export interface SupportDefinition {
   note: string
   /** Bônus concedido quando socketado. */
   mods: StatMods
+  /**
+   * SELO ELEMENTAL (SK2): converte o tipo de dano da skill para este tipo
+   * (ex.: físico → fogo), reusando o motor multi-tipo. Cria builds novas a
+   * partir de skills existentes. Ver EQUIPMENT_SKILLS_DESIGN §8.6.
+   */
+  convertsTo?: DamageType
+  /** O selo também faz a skill aplicar este ailment (M3). */
+  addsAilment?: AilmentId
 }
 
 /* ---------- árvore passiva ---------- */

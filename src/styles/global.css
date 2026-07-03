@@ -4695,6 +4695,10 @@ a {
 .source-tag {
   color: #8fe0d4;
 }
+.seal-tag {
+  color: #ecd085;
+  border-style: dashed;
+}
 
 /* selo de maestria de skill (SK1) */
 .mastery {
