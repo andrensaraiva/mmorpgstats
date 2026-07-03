@@ -196,10 +196,35 @@ O `fingerprint` ([engine.ts](../src/game/engine.ts)) passa a incluir o **loadout
 - ✅ **R1 — Simulador (motor, puro + testes). CONCLUÍDO.** `simulateRotation` ([engine.ts](../src/game/engine.ts)) sobre a matemática física atual: recurso + cooldown + cast + **um par de combo** (Exposição setup→payoff) + ataque básico de fallback. Saída: DPS medido + diagnóstico (`comboUptime`, `resourceUptime`, `bottleneck`, `perSkill`). Fórmula de armadura por tamanho de golpe (`A/(A+12×golpe)`, teto 90%). Constantes R1: recurso `max 100`/`regen 10` (placeholder, `deriveResource`); Exposição `4s`, `comboMore 40%`; ataque básico `mult 0.5`. `aggregate` refatorado com `buildContext` compartilhado (mesma matemática; a sim reduz ao DPS do `aggregate` para a skill única). **6 testes novos** (equivalência, ordem importa, starvation→gargalo, armadura, determinismo, utilitária ignorada). Ainda **não** toca `fingerprint`/store/UI (é R2).
 - ✅ **R2 — Boneco de Treino (UI). CONCLUÍDO.** [`TrainingDummy.tsx`](../src/ui/TrainingDummy.tsx) no topo da tela de Habilidades: roda a sim contra um **alvo modificável** (presets Sem defesa/Elite/Chefe + slider de armadura; res. por tipo stub p/ M1), mostra o **DPS contra o alvo** + **diagnóstico** (uptime do combo, aproveitamento de recurso, gargalo, dano por skill) e a **rotação** (ordem = prioridade, com selos de combo, read-only até o R3). Botão **"Bater no boneco"** grava o `measured` canônico (rotação vs alvo neutro) → o PowerBar em todas as telas troca estimativa→medido. **Mudanças de fundo:** `fingerprint` inclui loadout+ordem; `selectPower` passa a devolver `dps` da rotação (estimativa/medido/dungeon/compare agora falam a mesma língua); `measuredRotation` (janela 12s, alvo neutro) é o DPS-âncora. Ação `measure` + `measureDummy` no store; `loadout` no estado (default `STARTER_LOADOUT` = boa ordem). **+1 teste** (integração do default), 49 no total.
 - **R3 — Tela de Habilidades com combo (UI).** Pool de skills + editor de rotação (prioridade), suportes por skill (atual), selos de combo, prévia de Δ DPS. Aposenta as "Regras de comportamento" decorativas.
-- **R4 — Unificar com a dungeon.** A dungeon usa o measured da sim (já usa via `measured`); opcionalmente roda a **mesma sim** por baixo para o relatório. Mantém **sobrevivência + loot** como o extra da dungeon.
+- **R4 — Motor de combate da dungeon (o lado defensivo da sim).** O mesmo laço de ticks passa a simular também **o que o herói recebe**: dano por tick de cada monstro/onda, **controle (CC)**, **uso de poção/frasco** e **EHP**. Isso fecha a **corrida limpar × morrer** (o eixo tank × DPS) e o **relatório completo**. Ver §7.1 abaixo. A dungeon deixa de usar a fórmula simplificada e passa a rodar a sim; mantém **loot** como o extra sobre o boneco (que segue só ofensa). Converge com **M5** ([COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md)) e **B5** ([BESTIARY §4.3/§6](./BESTIARY_AND_DUNGEONS.md)).
 - **R5 — Alargar com M1+ (depois).** Quando multi-tipo/penetração/ailments (M1–M3) entrarem, só o **passo de dano** da sim cresce; rotação/combo/boneco **não mudam**. O boneco liga os sliders de resistência.
 
 **Primeira fatia recomendada:** **R1 + R2** — o simulador testado e o boneco que o exibe. Entrega o "bater no boneco e ver o DPS" com impacto real, e destrava a tela de habilidades (R3) em cima de uma base sólida.
+
+### 7.1 R4 em detalhe — a corrida limpar × morrer, CC e o relatório
+
+O que faz a dungeon **parecer um ARPG de verdade** e dar lugar a **todo tipo de build** (a preocupação do dono, 03/jul). O mesmo laço de ticks do R1 ganha um **relógio de dois ponteiros**:
+
+- **Tempo-para-limpar** = `vida_do_encontro / DPS_efetivo` (a sim ofensiva que já temos; `DPS_efetivo` penaliza falta de AoE vs. horda e de single-target vs. chefe — [BESTIARY §4.3](./BESTIARY_AND_DUNGEONS.md)).
+- **Tempo-para-morrer** = `EHP / dano_recebido_por_segundo`, onde o dano recebido vem do **perfil de dano de cada monstro/onda** passado pelas **camadas de defesa** (res. por tipo → armadura/evasão/bloqueio → ES → vida) e **descontado pela poção** quando a regra de comportamento dispara.
+
+**Quem zera primeiro decide.** Isso realiza, sem número mágico, exatamente o que o dono pediu:
+
+| Build | Tempo-para-limpar | Tempo-para-morrer | Resultado típico |
+|---|---|---|---|
+| **DPS / glass cannon** | curto | curto | vence encontros rápidos; **morre** nos lentos/tanky (perde a corrida) |
+| **Tank** | longo | longo | **completa mais devagar, porém vivo** — o que você descreveu |
+| **Equilibrada** | médio | médio | passa na maioria, sem recordes |
+
+**Controle (CC) como causa própria** (`reason: 'control'`): chill/freeze/atordoamento **pausam o ponteiro de limpar** (o herói não age) enquanto o de morrer segue correndo. Se a build não tem **redução de duração de CC** nem EHP para aguentar a janela travado, é **morte por controle** — "tomou o controle de grupo e o DPS não tankou". Contrajogo: reduzir duração de CC, mais EHP, ou **priorizar matar o aplicador** (a rotação/target-priority importa).
+
+**Cooldown, itens, status e mana já contam** — vêm do R1 (rotação) e do `aggregate` (equip+árvore). O R4 só adiciona o **lado recebido**.
+
+**Relatório completo** (a lista integral do [MVP §10.4](./MVP.md)), tudo saído da mesma sim determinística: duração; DPS médio **e pico**; **dano causado e recebido**; dano por habilidade e tipo; cura/regen/mitigação; **poções/frascos usados**; uso e falta de recursos; **inimigos derrotados**; tempo por área; **tempo sob controle** e o efeito que mais custou; causa da morte; loot; deltas acionáveis. É o "mostrar ao jogador tudo o que aconteceu na masmorra".
+
+**Rankings para todos os perfis** já estão especificados ([MVP §4.5 e §15](./MVP.md)): dano, velocidade, sobrevivência, progressão infinita, Hardcore — cada um seu ladder, sempre comparados pelo **tempo interno da simulação** (não o do aparelho). O R4 gera as **métricas** que alimentam cada um desses ladders (o tank compete em sobrevivência/profundidade; o DPS em dano/velocidade).
+
+**Novos dados que o R4 pede** (aterrado no [BESTIARY §7](./BESTIARY_AND_DUNGEONS.md)): `Monster.damage`/`hitSize`/`cc`; `FailReason` ganha `'control'`; herói ganha **redução de duração de CC** e **frascos** (vida/mana, já slot em [EQUIPMENT_SKILLS](./EQUIPMENT_SKILLS_DESIGN.md)). Depende das camadas de defesa reais (M2) para o `dano_recebido` ser fiel; até lá, um piso simplificado já dá a corrida limpar×morrer.
 
 ---
 
@@ -209,7 +234,7 @@ O `fingerprint` ([engine.ts](../src/game/engine.ts)) passa a incluir o **loadout
 - **Determinismo mantido.** Valor esperado no crítico → sem RNG no número oficial; "mesma build → mesmo DPS" segue valendo. Variância seedada fica como opção futura.
 - **Orçamento de complexidade.** Poucas ativas (≤5) e **um ou dois** mecanismos de combo (Exposição + recurso) para evitar "sopa de botões" ([COMBAT §B3](./COMBAT_AND_ARCHETYPES.md)). Crescer com parcimônia.
 - **Sem texto livre na rotação.** Prioridade por dropdowns controlados (gatilho/condição/ação), como as regras atuais — o servidor "obedece" à prioridade.
-- **Boneco não prevê sobrevivência** (decisão: complementa, mede só o dano de saída). Sobrevivência/EHP seguem exibidos exatos e testados na dungeon.
+- **Boneco não prevê sobrevivência** (decisão: complementa, mede só o dano de saída). A **sobrevivência** (dano recebido, CC, poções, a corrida limpar×morrer) é simulada na **dungeon**, no **R4** (§7.1); EHP/resistências seguem exibidos exatos no boneco enquanto isso.
 
 ## 9. Fora de escopo por ora
 

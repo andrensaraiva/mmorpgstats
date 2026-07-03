@@ -347,11 +347,12 @@ Cada tentativa deverá informar:
 - dano total causado e recebido;
 - dano separado por habilidade e tipo;
 - cura, regeneração e mitigação;
+- **poções/frascos usados** (quantos e quando — sinal de sobrevivência apertada);
 - uso e falta de recursos;
 - quantidade de inimigos derrotados;
 - tempo gasto em cada área;
 - causa da morte ou falha;
-- efeitos negativos mais perigosos;
+- efeitos negativos mais perigosos, incluindo **tempo sob controle** (atordoado/congelado) e qual efeito mais custou;
 - loot obtido;
 - sugestões factuais, sem montar a build pelo jogador.
 

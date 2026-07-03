@@ -128,7 +128,9 @@ O `dungeonOutcome` deixa de olhar só `dps` e `fireRes`. Passa a rodar, por **fa
 
 1. **Vazão (clear):** `tempo = f(vida_total_do_encontro / dpsEfetivo)`, onde `dpsEfetivo` **penaliza** falta de AoE contra alta densidade e falta de single-target contra bruiser/boss.
 2. **Sobrevivência por tipo:** para **cada tipo de dano** presente, checa a **camada** correspondente (armadura vs físico dependente do golpe; res. vs elemental; ES/res.caos vs caos). Falha na **camada mais fraca** = causa da morte.
-3. **Composição:** aéreo sem dano-no-ar → **stall** (não limpa) → morte por atrito; mobilidade baixa vs ranged/waller → dano inevitável acumulado.
+3. **A corrida limpar × morrer (o eixo tank × DPS):** o encontro tem um **tempo-para-limpar** (item 1, cai com o DPS) e o herói tem um **tempo-para-morrer** (`EHP ÷ dano recebido por segundo`, do item 2). **Quem chega a zero primeiro decide o resultado.** Um **glass cannon** limpa rápido, mas perde a corrida em encontros lentos/tanky (morre); um **tank** limpa devagar, mas **ganha a corrida** e completa — **mais devagar, porém vivo**. É isso que torna DPS e defesa **eixos independentes** (não um número só) e dá a cada perfil de build um lugar. *(Modelado de fato no simulador por ticks — ver [COMBAT_ROTATION_AND_DUMMY §R4](./COMBAT_ROTATION_AND_DUMMY.md).)*
+4. **Controle (CC):** chill/freeze/atordoamento **congelam o tempo-para-limpar** (o herói não age) enquanto o **tempo-para-morrer** continua correndo. Sem redução de duração de CC / EHP para aguentar a janela travado, é **morte por controle** — uma causa própria (`reason: 'control'`, ver §6). Contrajogo: reduzir duração de CC, mais EHP, ou **matar o aplicador** (caster/swarmer) antes. É a tradução direta do "tomou um controle de grupo e o DPS não tankou".
+5. **Composição:** aéreo sem dano-no-ar → **stall** (não limpa) → morte por atrito; mobilidade baixa vs ranged/waller → dano inevitável acumulado.
 
 Continua **puro e determinístico** e alimenta os **números descobertos** (o DPS/EHP reais só aparecem no teste).
 
@@ -157,9 +159,11 @@ O relatório atual só diz "morte por fogo". Com o bestiário, o servidor devolv
 
 - **Causa primária:** a camada que quebrou e **contra qual tipo/arquétipo**. Ex.: *"Sobreviveu ao físico (armadura ok), mas o **pico de raio do elite Teleporter** passou com res. a raio 12% (exigido ~40%)."*
 - **Fase/onda:** em que momento caiu (onda de swarmers, fase 2 do chefe, elite específico).
+- **Morte por controle (CC):** quando o herói perdeu a **corrida limpar × morrer** por ter ficado **travado** (congelado/atordoado) tempo demais — *"congelado 2,1s pelo pico de frio do caster; a horda alcançou e o atrito venceu enquanto você não podia agir"*. É a causa própria `reason: 'control'` (§4.3, item 4).
 - **Gargalo de vazão:** se não foi morte, foi **atrito** — *"os voadores não foram atingidos (build de chão): DPS efetivo aéreo ~0, o tempo estourou"*.
 - **Deltas acionáveis:** o que mudaria o resultado — *"+28% res. a raio OU +1 camada (bloqueio) resolve"; "uma skill que atinge o ar limpa os morcegos"*.
 - **DPS/EHP reais medidos** (números descobertos) por **tipo** — não só um DPS único, mas **DPS físico/elemental/DoT** e **EHP por tipo de dano**.
+- **Métricas completas da tentativa** (a lista integral do jogador está em [MVP §10.4](./MVP.md)): inimigos derrotados, **dano causado e recebido**, **poções/frascos usados**, tempo por área, pico de DPS, tempo sob controle. Tudo o que aconteceu na masmorra é mostrado — é o que faz parecer um ARPG de verdade.
 
 Isso fecha o loop: o jogador **entende a lacuna**, ajusta a build (item/árvore/skill), e a **próxima** dungeon com composição diferente volta a testar outra coisa → **builds diversas por necessidade**.
 
@@ -201,11 +205,15 @@ interface DungeonComposition {
 
 O `Dungeon` ganha `composition: DungeonComposition` (e o `Bestiary` vira uma tabela de `Monster`). O `DungeonOutcome` ganha **causa detalhada**, **fase**, **DPS/EHP por tipo** e **deltas acionáveis**. `Power` ganha `coldRes`/`litRes`/**`chaosRes`** já usados de verdade, mais **evasão/ES/ward** conforme as fases M2/M3 do motor.
 
+Duas adições para o eixo tank×DPS e o controle:
+- **`FailReason` ganha `'control'`** (hoje é `none | damage-type | attrition | stall`) — a morte por ficar travado (§4.3, item 4), distinta do atrito genérico.
+- **`Monster` ganha um descritor de CC**, ex.: `cc?: { kind: 'chill'|'freeze'|'stun'; potency: number; chance: number }`, e o herói ganha **redução de duração de CC** como stat defensivo (afixo/árvore). O simulador cruza os dois para decidir quanto tempo o herói fica sem agir na janela.
+
 ### 7.1 Faseamento (encaixa nas fases M1–M5 do motor)
 - **B1 (com M1):** `DamageType` completo + `damageMix` da dungeon + res. por tipo usadas de verdade (não só fogo). *Baixo risco, destrava variedade imediata.*
 - **B2 (com M2):** armadura por tamanho de golpe + `hitSize` do monstro + camadas (evasão/ES). Habilita "swarm × boss".
 - **B3:** bestiário com **arquétipos e elites**; composição (`density`/`forceProfile`/`roles`) no `dungeonOutcome`; **preview**.
-- **B4:** **aéreo** (`hasAerial` × tag de skill `hits-air`) e **mobilidade** como requisitos; ailments/DoT (M3) para builds de veneno/queimadura.
+- **B4:** **aéreo** (`hasAerial` × tag de skill `hits-air`) e **mobilidade** como requisitos; ailments/DoT (M3) para builds de veneno/queimadura; **controle (chill/freeze/stun) e a morte por CC** (`reason: 'control'`), com redução de duração de CC como contrajogo.
 - **B5:** chefes com fases + **relatório causal** completo (por tipo/fase/delta). Fecha o loop com os números descobertos.
 
 ---

@@ -103,7 +103,9 @@ Tudo continua **puro** e alimenta a mecânica de **números descobertos** (DPS r
 - **M2 — Armadura por tamanho de golpe + evasão + ES + bloqueio** como camadas reais de EHP (troca a mitigação simplificada atual).
 - **M3 — Ailments/DoT** (sangramento/queimadura/veneno) e chill/shock/freeze como escala/controle. Habilita builds de DoT (muito amadas).
 - **M4 — Fontes múltiplas** (minions, totens/balista) somando ao DPS. Habilita summoner/totem.
-- **M5 — Execução por ticks** (simulação determinística no tempo) que roda o combate real e gera o relatório — o grande risco técnico do MVP, agora com a matemática pronta.
+- **M5 — Execução por ticks** (simulação determinística no tempo) que roda o combate real e gera o relatório — o grande risco técnico do MVP, agora com a matemática pronta. Tem **dois lados**:
+  - **Ofensa (já iniciado):** a rotação por ticks — recurso/cooldown/cast/combo — já existe como a **trilha R** ([COMBAT_ROTATION_AND_DUMMY](./COMBAT_ROTATION_AND_DUMMY.md)), que é o M5 começando cedo e estreito. Mede o **tempo-para-limpar**.
+  - **Defesa (R4/M5 pleno):** o mesmo laço passa a simular **dano recebido por tick, controle (CC), uso de poção e EHP** → o **tempo-para-morrer**. O resultado da dungeon vira a **corrida limpar × morrer** (o eixo tank × DPS: tank completa devagar porém vivo; glass cannon morre em encontros lentos) e habilita a **morte por controle** (`reason: 'control'`). Daí sai, de graça, o **relatório completo** que o [MVP §10.4](./MVP.md) pede (inimigos derrotados, dano causado/recebido, poções, tempo sob controle, causa). Ver [BESTIARY §4.3](./BESTIARY_AND_DUNGEONS.md).
 
 Cada fase é coberta por testes (o `engine.test.ts` já cobre o núcleo atual).
 
