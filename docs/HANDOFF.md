@@ -1,6 +1,6 @@
 # Handoff de Sessão — Consolidação dos Protótipos
 
-- **Criado:** 01 de julho de 2026 · **Atualizado:** 02 de julho de 2026
+- **Criado:** 01 de julho de 2026 · **Atualizado:** 03 de julho de 2026
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
 - **Status:** consolidação concluída (um só protótipo React na raiz) **e Polish Visual & UX concluído** — Fases **A–E entregues** + fundações **F1/F2/F3**. Resta só a **Fase F (arte/áudio)**, que depende de produção de assets. Próximo valor vem das **trilhas paralelas de produto** (motor determinístico, online/persistência, conteúdo). Ver o log granular em [POLISH_ROADMAP.md §10](./POLISH_ROADMAP.md).
 - **Último commit:** `f3c2d60` (Fase D; Fase E + F1 + F3 entram no commit desta sessão) — branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
@@ -91,6 +91,22 @@ O Polish Visual & UX (Fases A–E + F1/F2/F3) está fechado. A única fase de po
 3. **S1+ — modelo de item rico** ([EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md)): qualidade, evasão/ES, requisitos, novos afixos.
 
 Notas para quem pegar o polish de novo: a **galeria** (`?dev=gallery`) é o lugar de conferir/adicionar átomos; o **manifesto de tema** ([THEME.md](./THEME.md)) rege os tokens — componentes novos consomem tokens, e a migração do CSS legado é incremental (troque valores por tokens ao tocar num bloco).
+
+### ▶ ROTEIRO DE TESTE MANUAL (próxima sessão)
+`npm run dev` → http://localhost:5173/. Entre com um herói (auth mockada) e percorra:
+
+**Galeria primeiro (visão rápida de tudo):** abra **http://localhost:5173/?dev=gallery** — botões, chips, PowerBar (estimado×medido), ícones por raridade, orbes, tooltip, count-up e toasts, todos num lugar só. É a forma mais rápida de bater o olho no acabamento.
+
+1. **Equipamento — inventário (Fase D):** buscar por afixo (ex.: "fogo"), filtrar por categoria/raridade nas chips, trocar a ordenação; conferir o contador "N de M" e o estado vazio (filtro sem resultado → "limpar filtros").
+2. **Equipamento — craft (Fases C+D):** selecionar um item, aplicar orbes; ver **brilho/sheen no preview**, **pulso do orbe**, **"−1" subindo** no contador, **realce novo/alterado/removido** nos afixos, e o **toast** do resultado. Testar **sem moedas** (toast de aviso) e a **confirmação do Vaal** (irreversível).
+3. **Equipamento — equipar (Fase C):** equipar um item do baú → **pulso de encaixe** no slot do manequim.
+4. **Masmorra (Fase C):** enviar o herói e, no relatório, ver o **count-up "DPS real descoberto"**; voltar ao Equipamento e confirmar que a **PowerBar** troca de estimado→medido com realce, e que craftar/mexer esconde o DPS de novo.
+5. **Árvore (Fase E — teclado):** dar **Tab** até a árvore, navegar com **setas**, **Enter/Espaço** para alocar/reembolsar; foco visível no anel do nó.
+6. **Mobile (Fase E):** no DevTools em modo dispositivo — **pinch-zoom** na árvore, **nav rolável**, alvos de toque grandes; tooltip de item fixável por toque.
+7. **Onboarding (Fase D):** o modal de 4 passos aparece na 1ª sessão (limpe `localStorage` p/ revê-lo, ou clique no **"?"** na barra de topo).
+8. **Acessibilidade geral (Fase E):** **Tab** no topo mostra o **skip-link**; `prefers-reduced-motion` (config do SO/DevTools) deve neutralizar as animações.
+
+Se algo estiver fora do esperado, anote a fase/tela e me passe — a lista de trocas entra numa branch de ajustes.
 
 ### Trilhas paralelas (depois/junto do polish)
 - **S1+ (conteúdo/item)** — modelo de item rico (qualidade, defesas evasão/ES, requisitos, novos afixos): [EQUIPMENT_SKILLS_DESIGN](./EQUIPMENT_SKILLS_DESIGN.md).
