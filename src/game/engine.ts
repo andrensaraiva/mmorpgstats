@@ -115,6 +115,16 @@ const ARMOUR_K = 1500
 const RES_CAP = 75
 const RES_FLOOR = -60
 
+// Camadas de defesa (M2). Evasão vira chance de esquiva por entropia (valor
+// esperado, determinístico): evade = evasão / (evasão + EVASION_K × golpe),
+// teto 95%. A armadura no EHP usa um golpe de referência proporcional à vida.
+const EVASION_K = 8
+const EVASION_CAP = 0.95
+// Golpe de referência para dimensionar armadura/evasão no EHP agregado (um
+// "hit típico" que ameaça o herói ≈ fração da vida). Puramente para o número
+// de EHP exibido; a dungeon usa o golpe real do encontro.
+const EHP_REF_HIT_FRAC = 0.15
+
 // Recurso do herói (mana/energia). R1: constantes (placeholder). Depois deriva
 // de atributos/afixos, conforme COMBAT_AND_ARCHETYPES §A0.
 const RESOURCE_MAX = 100
@@ -182,8 +192,19 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
   const strength = global.strength ?? 0
   const life = Math.round((BASE_LIFE + strength + (global.flatLife ?? 0)) * (1 + (global.incLife ?? 0) / 100))
   const armour = global.armour ?? 0
-  const armourMit = armour / (armour + ARMOUR_K)
-  const ehp = Math.round(life * (1 + armourMit))
+  const evasion = Math.round((global.evasion ?? 0) * (1 + (global.incEvasion ?? 0) / 100))
+  const energyShield = Math.round((global.energyShield ?? 0) * (1 + (global.incEnergyShield ?? 0) / 100))
+  const block = clamp(global.block ?? 0, 0, RES_CAP)
+
+  // EHP em camadas (M2): pool = vida + ES; mitigação física por armadura+evasão
+  // contra um golpe de referência; bloqueio como redução média.
+  const pool = life + energyShield
+  const refHit = Math.max(1, pool * EHP_REF_HIT_FRAC)
+  const armourMit = Math.min(ARMOUR_MIT_CAP, armour / (armour + ARMOUR_HIT_K * refHit))
+  const evadeChance = Math.min(EVASION_CAP, evasion / (evasion + EVASION_K * refHit))
+  const blockMit = block / 100
+  const physTaken = (1 - armourMit) * (1 - evadeChance) * (1 - blockMit)
+  const ehp = Math.round(pool / Math.max(0.05, physTaken))
   const resource = deriveResource(global)
 
   return {
@@ -191,7 +212,9 @@ export function aggregate({ equipped, allocated, sockets }: AggregateInput): Pow
     ehp,
     life,
     armour,
-    block: clamp(global.block ?? 0, 0, RES_CAP),
+    evasion,
+    energyShield,
+    block,
     attackSpeed: Math.round(attackSpeed * 100) / 100,
     critChance: Math.round(critChance),
     critMulti: Math.round(critMulti),
@@ -689,9 +712,18 @@ function heroResOfType(power: Power, type: DamageType): number {
   }
 }
 
-/** Dano recebido de um tipo, já pela camada de defesa (armadura p/ físico, res. p/ o resto). */
+/**
+ * Dano recebido de um tipo, já pela camada de defesa. Físico (M2): armadura
+ * por tamanho do golpe + evasão (valor esperado) + bloqueio. Elemental/caos:
+ * resistência do herói (teto 75, piso −60).
+ */
 function mitigatedIncoming(type: DamageType, raw: number, power: Power): number {
-  if (type === 'phys') return raw * (1 - power.armour / (power.armour + ARMOUR_K))
+  if (type === 'phys') {
+    const armourMit = Math.min(ARMOUR_MIT_CAP, power.armour / (power.armour + ARMOUR_HIT_K * Math.max(1, raw)))
+    const evadeChance = Math.min(EVASION_CAP, power.evasion / (power.evasion + EVASION_K * Math.max(1, raw)))
+    const blockMit = clamp(power.block, 0, RES_CAP) / 100
+    return raw * (1 - armourMit) * (1 - evadeChance) * (1 - blockMit)
+  }
   const res = clamp(heroResOfType(power, type), RES_FLOOR, RES_CAP)
   return raw * (1 - res / 100)
 }
@@ -727,6 +759,7 @@ export function simulateDungeon(dungeon: Dungeon, power: Power): DungeonRun {
   let t = 0
   let clearRemaining = tClear
   let hp = power.life
+  let es = power.energyShield // M2: buffer que absorve antes da vida
   let potionsUsed = 0
   let timeControlled = 0
   let damageTaken = 0
@@ -739,8 +772,11 @@ export function simulateDungeon(dungeon: Dungeon, power: Power): DungeonRun {
     else clearRemaining -= SIM_DT
 
     const dmg = incoming * SIM_DT
-    hp -= dmg
     damageTaken += dmg
+    // ES absorve primeiro; o excedente vai para a vida.
+    const toEs = Math.min(es, dmg)
+    es -= toEs
+    hp -= dmg - toEs
     if (hp <= POTION_THRESHOLD * power.life && potions > 0) {
       hp = Math.min(power.life, hp + potionHeal)
       potions -= 1

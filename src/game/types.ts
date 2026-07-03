@@ -84,6 +84,11 @@ export type StatKey =
   | 'flatLife'
   | 'incLife'
   | 'armour'
+  // Camadas de defesa reais (M2): evasão e escudo de energia (plano + aumentado).
+  | 'evasion'
+  | 'incEvasion'
+  | 'energyShield'
+  | 'incEnergyShield'
   | 'block'
   | 'fireRes'
   | 'coldRes'
@@ -451,6 +456,10 @@ export interface Power {
   ehp: number
   life: number
   armour: number
+  /** Evasão total (M2) — vira chance de esquiva pelo tamanho do golpe do alvo. */
+  evasion: number
+  /** Escudo de energia (M2) — buffer que absorve antes da vida. */
+  energyShield: number
   block: number
   attackSpeed: number
   critChance: number

@@ -156,6 +156,8 @@ export function PowerDetails({ power, knownDps }: { power: Power; knownDps: numb
   const [lo, hi] = estimateRange(power.dps)
   const chips: Array<[string, string]> = [
     ['Armadura', fmtInt(power.armour)],
+    ['Evasão', fmtInt(power.evasion)],
+    ['Esc. energia', fmtInt(power.energyShield)],
     ['Bloqueio', `${power.block}%`],
     ['Crítico', `${power.critChance}% · x${(power.critMulti / 100).toFixed(2)}`],
     ['Vel. ataque', `${power.attackSpeed.toFixed(2)}/s`],

@@ -69,6 +69,34 @@ describe('aggregate (modelo de poder)', () => {
 
     expect(withRing.fireRes).toBeGreaterThan(withoutRing.fireRes)
   })
+
+  /* ---------- M2: camadas de defesa (evasão, ES, EHP) ---------- */
+
+  it('nós de evasão/ES elevam evasão, escudo de energia e o EHP', () => {
+    const { equipped } = starterEquipped()
+    const base = aggregate({ equipped, allocated: ['s0', 'd1', 'd2'], sockets: defaultSockets })
+    // d7 (+120 evasão) e d8 (+25% evasão, +80 ES) exigem o caminho d1→d2→d7→d8.
+    const layered = aggregate({ equipped, allocated: ['s0', 'd1', 'd2', 'd7', 'd8'], sockets: defaultSockets })
+
+    expect(layered.evasion).toBeGreaterThan(base.evasion)
+    expect(layered.energyShield).toBeGreaterThan(base.energyShield)
+    expect(layered.ehp).toBeGreaterThan(base.ehp)
+  })
+
+  it('escudo de energia soma ao pool do EHP (buffer antes da vida)', () => {
+    const { equipped } = starterEquipped()
+    // Vestes Arcanas (implícito +120 ES) + afixo de ES, montado à mão.
+    const arcane: ItemInstance = {
+      uid: 'test-es', baseId: 'arcane_vestment', rarity: 'magic', itemLevel: 60, corrupted: false,
+      name: 'Vestes de Teste',
+      affixes: [{ groupId: 'flat_es', kind: 'prefix', tier: 2, values: { energyShield: 200 }, text: '+200 escudo de energia' }],
+    }
+    const withoutEs = aggregate({ equipped, allocated: ['s0'], sockets: defaultSockets })
+    const withEs = aggregate({ equipped: [...equipped, arcane], allocated: ['s0'], sockets: defaultSockets })
+
+    expect(withEs.energyShield).toBeGreaterThan(withoutEs.energyShield)
+    expect(withEs.ehp).toBeGreaterThan(withoutEs.ehp)
+  })
 })
 
 describe('dungeonOutcome', () => {
@@ -462,11 +490,27 @@ describe('simulateDungeon (combate: corrida limpar×morrer, CC, poções)', () =
     expect(r.survivable).toBe(false)
     expect(r.reason).toBe('control')
   })
+
+  /* ---------- M2: evasão e escudo de energia no lado recebido ---------- */
+
+  it('evasão reduz o dano físico recebido na dungeon', () => {
+    const noEvasion = simulateDungeon(crypt, { ...glass(), evasion: 0 })
+    const evasive = simulateDungeon(crypt, { ...glass(), evasion: 4000 })
+    // Com esquiva alta, cada segundo de físico recebido pesa menos → dura mais.
+    expect(evasive.report.enemiesDefeated).toBeGreaterThan(noEvasion.report.enemiesDefeated)
+  })
+
+  it('escudo de energia estende a sobrevivência (absorve antes da vida)', () => {
+    const bare = simulateDungeon(crypt, glass())
+    const shielded = simulateDungeon(crypt, { ...glass(), energyShield: 3000 })
+    // O ES é um pool extra: absorve dano antes da vida → limpa mais do encontro.
+    expect(shielded.report.enemiesDefeated).toBeGreaterThan(bare.report.enemiesDefeated)
+  })
 })
 
 function basePower(): Power {
   return {
-    dps: 300, ehp: 8000, life: 6000, armour: 500, block: 20, attackSpeed: 1.4,
+    dps: 300, ehp: 8000, life: 6000, armour: 500, evasion: 0, energyShield: 0, block: 20, attackSpeed: 1.4,
     critChance: 20, critMulti: 180, fireRes: 40, coldRes: 40, litRes: 40, chaosRes: 40,
     strength: 200, dexterity: 40, intelligence: 40, supportCap: 2,
     resourceMax: 100, resourceRegen: 10,

@@ -456,6 +456,8 @@ function ComparePanel({ game, item }: { game: Game; item: ItemInstance }) {
     ['DPS (est.)', Math.round(cur.dps), Math.round(candDps), ''],
     ['Vida efetiva', cur.ehp, cand.ehp, ''],
     ['Armadura', cur.armour, cand.armour, ''],
+    ['Evasão', cur.evasion, cand.evasion, ''],
+    ['Esc. energia', cur.energyShield, cand.energyShield, ''],
     ['Res. Fogo', cur.fireRes, cand.fireRes, '%'],
     ['Res. Frio', cur.coldRes, cand.coldRes, '%'],
     ['Res. Raio', cur.litRes, cand.litRes, '%'],

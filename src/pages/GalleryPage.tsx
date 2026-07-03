@@ -19,7 +19,7 @@ import type { Toast } from '../game/store'
 const RARITIES: Rarity[] = ['common', 'magic', 'rare', 'unique']
 
 const DEMO_POWER: Power = {
-  dps: 24500, ehp: 8900, life: 4200, armour: 1240, block: 20,
+  dps: 24500, ehp: 8900, life: 4200, armour: 1240, evasion: 2200, energyShield: 900, block: 20,
   attackSpeed: 1.35, critChance: 42, critMulti: 310,
   fireRes: 75, coldRes: 61, litRes: 48, chaosRes: -20,
   strength: 210, dexterity: 84, intelligence: 60, supportCap: 3,

@@ -185,6 +185,34 @@ export const ITEM_BASES: ItemBase[] = [
     implicitText: '+80 armadura',
     baseItemLevel: 40,
   },
+  // ---- M2: bases de evasão e escudo de energia ----
+  {
+    id: 'shadow_garb',
+    name: 'Traje das Sombras',
+    kind: 'chest',
+    itemClass: 'armour',
+    implicit: { evasion: 240 },
+    implicitText: '+240 evasão',
+    baseItemLevel: 46,
+  },
+  {
+    id: 'arcane_vestment',
+    name: 'Vestes Arcanas',
+    kind: 'chest',
+    itemClass: 'armour',
+    implicit: { energyShield: 120 },
+    implicitText: '+120 escudo de energia',
+    baseItemLevel: 48,
+  },
+  {
+    id: 'silk_hood',
+    name: 'Capuz de Seda',
+    kind: 'head',
+    itemClass: 'armour',
+    implicit: { evasion: 90, energyShield: 40 },
+    implicitText: '+90 evasão, +40 escudo de energia',
+    baseItemLevel: 42,
+  },
   {
     id: 'amber_amulet',
     name: 'Amuleto de Âmbar',
@@ -349,6 +377,47 @@ export const AFFIX_GROUPS: AffixGroup[] = [
     tiers: [
       { tier: 4, ranges: { armour: [40, 79] }, text: '+{armour} armadura', minItemLevel: 1 },
       { tier: 2, ranges: { armour: [120, 199] }, text: '+{armour} armadura', minItemLevel: 48 },
+    ],
+  },
+  // ---- M2: evasão e escudo de energia ----
+  {
+    id: 'flat_evasion',
+    name: 'Evasão',
+    kind: 'prefix',
+    classes: ['armour'],
+    tiers: [
+      { tier: 4, ranges: { evasion: [40, 79] }, text: '+{evasion} evasão', minItemLevel: 1 },
+      { tier: 2, ranges: { evasion: [120, 199] }, text: '+{evasion} evasão', minItemLevel: 48 },
+    ],
+  },
+  {
+    id: 'inc_evasion',
+    name: 'Evasão Aumentada',
+    kind: 'suffix',
+    classes: ['armour'],
+    tiers: [
+      { tier: 4, ranges: { incEvasion: [8, 14] }, text: '+{incEvasion}% evasão aumentada', minItemLevel: 1 },
+      { tier: 2, ranges: { incEvasion: [18, 26] }, text: '+{incEvasion}% evasão aumentada', minItemLevel: 50 },
+    ],
+  },
+  {
+    id: 'flat_es',
+    name: 'Escudo de Energia',
+    kind: 'prefix',
+    classes: ['armour', 'jewellery'],
+    tiers: [
+      { tier: 4, ranges: { energyShield: [16, 30] }, text: '+{energyShield} escudo de energia', minItemLevel: 1 },
+      { tier: 2, ranges: { energyShield: [50, 84] }, text: '+{energyShield} escudo de energia', minItemLevel: 48 },
+    ],
+  },
+  {
+    id: 'inc_es',
+    name: 'Escudo de Energia Aumentado',
+    kind: 'suffix',
+    classes: ['armour'],
+    tiers: [
+      { tier: 4, ranges: { incEnergyShield: [8, 14] }, text: '+{incEnergyShield}% escudo de energia aumentado', minItemLevel: 1 },
+      { tier: 2, ranges: { incEnergyShield: [18, 26] }, text: '+{incEnergyShield}% escudo de energia aumentado', minItemLevel: 50 },
     ],
   },
   {
@@ -589,6 +658,8 @@ export const SUPPORTS: SupportDefinition[] = [
   { id: 's_elem', name: 'Foco Elemental', match: ['elemental'], note: '+18% dano elemental', mods: { incElemental: 18 } },
   { id: 's_pierce', name: 'Ruptura Arcana', match: ['elemental'], note: '+8% penetração elem.', mods: { firePen: 8, coldPen: 8, lightningPen: 8 } },
   { id: 's_proj', name: 'Projétil Veloz', match: ['projétil'], note: '+12% dano', mods: { moreDamage: 12 } },
+  // ---- M2: suporte defensivo (evasão/ES) ----
+  { id: 's_ward', name: 'Salvaguarda', match: ['defesa', 'persistente'], note: '+15% evasão e ES', mods: { incEvasion: 15, incEnergyShield: 15 } },
 ]
 
 export const BEHAVIOR: Array<{ when: string; then: string }> = [
@@ -620,6 +691,9 @@ export const TREE: PassiveTree = {
     { id: 'd3', x: 172, y: 378, type: 'notable', path: 'def', name: 'Muralha Viva', stat: '+120 armadura, +6% bloqueio', mods: { armour: 120, block: 6 } },
     { id: 'd4', x: 112, y: 414, type: 'small', path: 'def', name: 'Cerne Térmico', stat: '+16% res. a fogo', mods: { fireRes: 16 } },
     { id: 'd5', x: 52, y: 378, type: 'keystone', path: 'def', name: 'Juramento de Pedra', stat: 'KEYSTONE: +20% bloqueio, mas −30% dano', mods: { block: 20, lessDamage: 30 } },
+    // ---- M2: ramo de esquiva/escudo ----
+    { id: 'd7', x: 214, y: 456, type: 'small', path: 'def', name: 'Passo Leve', stat: '+120 evasão', mods: { evasion: 120 } },
+    { id: 'd8', x: 158, y: 486, type: 'notable', path: 'def', name: 'Dança das Sombras', stat: '+25% evasão, +80 escudo de energia', mods: { incEvasion: 25, energyShield: 80 } },
 
     { id: 'u1', x: 414, y: 214, type: 'small', path: 'util', name: 'Fôlego', stat: '+40 vida máxima', mods: { flatLife: 40 } },
     { id: 'u2', x: 436, y: 140, type: 'small', path: 'util', name: 'Temperança', stat: '+8% res. a frio', mods: { coldRes: 8 } },
@@ -632,7 +706,7 @@ export const TREE: PassiveTree = {
   ],
   edges: [
     ['s0', 'o1'], ['o1', 'o2'], ['o2', 'o3'], ['o3', 'o4'], ['o4', 'o5'], ['o1', 'o6'], ['o6', 'o3'],
-    ['s0', 'd1'], ['d1', 'd2'], ['d2', 'd3'], ['d3', 'd4'], ['d4', 'd5'], ['d1', 'd6'], ['d6', 'd3'],
+    ['s0', 'd1'], ['d1', 'd2'], ['d2', 'd3'], ['d3', 'd4'], ['d4', 'd5'], ['d1', 'd6'], ['d6', 'd3'], ['d2', 'd7'], ['d7', 'd8'],
     ['s0', 'u1'], ['u1', 'u2'], ['u2', 'u3'], ['u3', 'u4'], ['u4', 'u5'], ['u2', 'u6'], ['u6', 'u7'],
   ],
 }
