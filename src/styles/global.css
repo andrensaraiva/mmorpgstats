@@ -4520,6 +4520,98 @@ a {
   color: var(--blood-hi);
   border-color: var(--blood);
 }
+/* ---- editor de rotação (R3) ---- */
+.rota-edit {
+  padding: 10px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.re-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.re-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rs-combo-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.re-controls {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: var(--panel3);
+  border: 1px solid var(--line2);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.icon-btn.danger:hover:not(:disabled) {
+  border-color: var(--blood);
+  color: var(--blood-hi);
+}
+.re-sockets {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.pool-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pool-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--panel2);
+  border: 1px dashed var(--line2);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+.pool-chip:hover {
+  border-style: solid;
+  border-color: var(--teal);
+}
+.pc-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pc-add {
+  flex: 0 0 auto;
+  color: var(--teal-hi);
+  font-size: 12px;
+  font-weight: 600;
+}
 @media (max-width: 640px) {
   .ps-row {
     grid-template-columns: 96px 1fr auto;

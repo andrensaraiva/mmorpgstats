@@ -164,37 +164,7 @@ export function TrainingDummy({ game }: { game: Game }) {
           )
         })}
       </div>
-
-      <div className="eyebrow mt10 mb6">Rotação (ordem = prioridade)</div>
-      <div className="rota">
-        {game.state.loadout.map((id, i) => {
-          const sk = SKILLS.find((s) => s.id === id)
-          if (!sk) return null
-          const supports = game.state.sockets[id] ?? []
-          return (
-            <div className="rota-slot" key={id}>
-              <span className="rs-order">{i + 1}</span>
-              <span className={`skill-gem gem--${sk.type}`}>{sk.glyph}</span>
-              <div className="rs-main">
-                <div className="rs-name">{sk.name}</div>
-                <div className="rs-meta tiny muted">
-                  custo {sk.cost} · {sk.cooldown > 0 ? `rec ${sk.cooldown}s` : 'sem cooldown'} · {supports.length}{' '}
-                  suporte(s)
-                </div>
-              </div>
-              <div className="rs-combo">
-                {sk.applies ? <span className="combo-tag ct--setup">▶ abre Exposição</span> : null}
-                {sk.empoweredBy ? (
-                  <span className="combo-tag ct--payoff">◀ +{sk.comboMore}% com Exposição</span>
-                ) : null}
-              </div>
-            </div>
-          )
-        })}
-        <div className="tiny muted mt6">
-          Reordenar a rotação (arrastar/prioridade) chega no R3. A ordem muda o DPS — e re-esconde o número medido.
-        </div>
-      </div>
+      <div className="tiny muted mt6">Monte a rotação logo abaixo — o número aqui reage na hora.</div>
     </Panel>
   )
 }

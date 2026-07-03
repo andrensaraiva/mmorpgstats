@@ -133,6 +133,8 @@ type Action =
   | { type: 'toggleNode'; nodeId: string }
   | { type: 'resetTree' }
   | { type: 'toggleSocket'; skillId: string; supportId: string }
+  | { type: 'moveLoadout'; skillId: string; dir: -1 | 1 }
+  | { type: 'toggleLoadout'; skillId: string }
   | { type: 'replaceItem'; before: ItemInstance; item: ItemInstance; orb: OrbId; notice: string }
   | { type: 'selectDungeon'; id: string }
   | { type: 'attemptRun' }
@@ -225,6 +227,25 @@ function reducer(state: GameState, action: Action): GameState {
         next = [...current, action.supportId]
       }
       return { ...state, sockets: { ...state.sockets, [action.skillId]: next }, notice: null }
+    }
+
+    case 'moveLoadout': {
+      const idx = state.loadout.indexOf(action.skillId)
+      const j = idx + action.dir
+      if (idx < 0 || j < 0 || j >= state.loadout.length) return state
+      const loadout = state.loadout.slice()
+      ;[loadout[idx], loadout[j]] = [loadout[j], loadout[idx]]
+      return { ...state, loadout, notice: null }
+    }
+
+    case 'toggleLoadout': {
+      if (state.loadout.includes(action.skillId)) {
+        if (state.loadout.length <= 1) {
+          return { ...state, notice: 'A rotação precisa de ao menos uma habilidade de dano.' }
+        }
+        return { ...state, loadout: state.loadout.filter((id) => id !== action.skillId), notice: null }
+      }
+      return { ...state, loadout: [...state.loadout, action.skillId], notice: null }
     }
 
     case 'replaceItem': {
@@ -392,6 +413,8 @@ export function useGame() {
     (skillId: string, supportId: string) => dispatch({ type: 'toggleSocket', skillId, supportId }),
     [],
   )
+  const moveLoadout = useCallback((skillId: string, dir: -1 | 1) => dispatch({ type: 'moveLoadout', skillId, dir }), [])
+  const toggleLoadout = useCallback((skillId: string) => dispatch({ type: 'toggleLoadout', skillId }), [])
   const selectDungeon = useCallback((id: string) => dispatch({ type: 'selectDungeon', id }), [])
   const resetAttempt = useCallback(() => dispatch({ type: 'attemptReset' }), [])
 
@@ -432,6 +455,8 @@ export function useGame() {
     toggleNode,
     resetTree,
     toggleSocket,
+    moveLoadout,
+    toggleLoadout,
     selectDungeon,
     resetAttempt,
     measureDummy,
