@@ -3,8 +3,9 @@
 - **Criado:** 01 de julho de 2026 · **Atualizado:** 03 de julho de 2026
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
 - **Status:** consolidação concluída; **Polish A–E** + F1/F2/F3 (resta só a **F, arte/áudio**); **combate R1–R4** (rotação/boneco/dungeon tank×DPS); e o **MOTOR COMPLETO — M1 (multi-tipo), M2 (evasão/ES/armadura por golpe), M3 (ailments/DoT), M4 (minions/totens) CONCLUÍDOS; M5 (execução por ticks) fechado via R1–R4 + M1–M4**. Fontes: [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md), [COMBAT_ROTATION_AND_DUMMY §7](./COMBAT_ROTATION_AND_DUMMY.md). O que resta é **tuning de balanceamento** e as trilhas de **conteúdo/persistência/online** — não novo sistema de motor.
-- **Item rico + skills por arma (trilha S):** **S1** (qualidade/defesas/requisitos/`weaponType`), **S2** (tooltip PoE2) e **S3** (habilidades disponíveis por arma equipada) **CONCLUÍDOS** — ver [EQUIPMENT_SKILLS_DESIGN §7](./EQUIPMENT_SKILLS_DESIGN.md).
-- **Último commit:** `efac2e8` (docs handoff do motor). A trilha S entra no commit desta sessão. Branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
+- **Item rico + skills por arma (trilha S):** **S1/S2/S3 CONCLUÍDOS** — ver [EQUIPMENT_SKILLS_DESIGN §7](./EQUIPMENT_SKILLS_DESIGN.md).
+- **Progressão jogável + mecânicas-assinatura (NOVO):** **P1/P2** (XP, níveis, campanha que destrava o jogo — [PROGRESSION_AND_STORY §7.1](./PROGRESSION_AND_STORY.md)); **afixo excepcional só-dropa** ([ARPG_RESEARCH §8.5](./ARPG_RESEARCH.md)); **maestria de skill (SK1)** e **selo elemental (SK2)** ([EQUIPMENT_SKILLS_DESIGN §8.6](./EQUIPMENT_SKILLS_DESIGN.md)) — **todos CONCLUÍDOS**.
+- **Último commit:** `de8c9fe` (SK2 — selo elemental). Branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
 
 > Para o próximo assistente/sessão: leia este arquivo inteiro. Comece pela **§5 — Ponto de partida** (é onde a fase de Polish parou). O fluxo de trabalho do dono: **commite cada etapa, atualize os docs, push perto do fim da sessão** (typecheck+test+build verdes a cada passo).
 
@@ -39,7 +40,7 @@ Tudo vive no app React da raiz. Núcleo de jogo separado da UI, em `src/game/`:
 - **`src/styles/global.css`** — visual POE full-width portado do `prototype-claude/styles.css`.
 
 ### Validação técnica (verde a cada commit)
-- `npm run typecheck` sem erros · `npm test` — **74 testes** aprovados · `npm run build` (tsc + vite) concluído.
+- `npm run typecheck` sem erros · `npm test` — **88 testes** aprovados · `npm run build` (tsc + vite) concluído.
 - Núcleo do **motor** (`engine.ts`) segue **puro e determinístico**: durante o polish (A–F) ficou intocado; a trilha de combate R1–R4 **adicionou** `simulateRotation`/`simulateDungeon` como novas funções puras cobertas por testes (mesma filosofia do `aggregate` — sem estado, sem RNG no número oficial). O `store.ts` (React) orquestra loadout/measured/toasts.
 
 ---
@@ -105,7 +106,13 @@ Notas: a **galeria** (`?dev=gallery`) mostra os átomos; o **manifesto de tema**
 ### ▶ ROTEIRO DE TESTE MANUAL (próxima sessão)
 `npm run dev` → http://localhost:5173/. Entre com um herói (auth mockada) e percorra:
 
-**Galeria primeiro (visão rápida de tudo):** abra **http://localhost:5173/?dev=gallery** — botões, chips, PowerBar (estimado×medido), ícones por raridade, orbes, tooltip, count-up e toasts, todos num lugar só. É a forma mais rápida de bater o olho no acabamento.
+**★ PROGRESSÃO (o novo — teste isto primeiro).** O jogo agora **abre na Campanha** (as demais abas nascem travadas):
+- **Campanha (P1/P2):** a trilha tem 5 marcos (Prólogo→Ato IV). Selecione o marco atual, leia o **intro** e "o que ensina", clique **Enviar Herói** → **VITÓRIA** dá **XP** (count-up), **loot garantido** (toast) e **desbloqueia um sistema** — a aba correspondente **aparece na nav**. A **barra de XP** na top bar enche; ao encher, **sobe de nível** (toast "⬆ Nível"). Os primeiros atos vencem com o starter; **os finais (Geleira/Fenda) exigem melhorar a build** (res. a frio/caos) — é o desafio de progressão. Ordem de desbloqueio: Equipamento→prólogo, Árvore→Ato I, Masmorra→Ato II, Mercado→Ato III.
+- **Afixo excepcional (só-dropa):** cada marco vencido dá loot; o **Ato IV sempre traz um afixo EXCEPCIONAL** (dourado, tag **EXC**/✦ no tooltip) — ~1,5× o normal e **não-craftável** (tente craftar: os orbes nunca o geram; o divino o preserva).
+- **Maestria de skill (SK1):** em **Habilidades**, cada skill da rotação mostra **★ Maestria N (+X%)**. Vença dungeons/marcos com a skill no loadout → ela **sobe de maestria** (toast) e o **DPS no boneco cresce**.
+- **Selo elemental (SK2):** em **Habilidades**, encaixe um **Selo** (Brasa/Gelo/Tempestade/Pestilento) numa skill física → o tipo muda (ex.: **fogo + queimadura**, marca "◈ selado"); no boneco, o **dano por tipo** vira elemental, ignora a **armadura** do alvo e passa a sofrer a **resistência** nova.
+
+**Galeria (visão rápida de UI):** abra **http://localhost:5173/?dev=gallery** — botões, chips, PowerBar, ícones, orbes, tooltip, count-up e toasts num lugar só.
 
 1. **Equipamento — inventário (Fase D):** buscar por afixo (ex.: "fogo"), filtrar por categoria/raridade nas chips, trocar a ordenação; conferir o contador "N de M" e o estado vazio (filtro sem resultado → "limpar filtros").
 2. **Equipamento — craft (Fases C+D):** selecionar um item, aplicar orbes; ver **brilho/sheen no preview**, **pulso do orbe**, **"−1" subindo** no contador, **realce novo/alterado/removido** nos afixos, e o **toast** do resultado. Testar **sem moedas** (toast de aviso) e a **confirmação do Vaal** (irreversível).
