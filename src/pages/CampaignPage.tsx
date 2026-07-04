@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { CAMPAIGN, DUNGEONS } from '../game/content'
-import { dungeonXp, makeRewardItem, makeRng, simulateDungeon } from '../game/engine'
+import { dungeonXp, makeRng, rollLoot, simulateDungeon } from '../game/engine'
 import type { AttemptResult, Game } from '../game/store'
 import type { CampaignNode, Dungeon } from '../game/types'
 import { PageHead, Panel } from '../ui/atoms'
@@ -148,25 +148,13 @@ function CampaignEncounter({
     })
     if (run.survivable) {
       game.completeCampaignNode(node.id)
-      // Loot garantido do marco. O ato final (sem `unlocks`) sempre traz um
-      // afixo EXCEPCIONAL só-dropa; os demais, com chance crescente.
+      // Loot da run (múltiplos itens + orbes). O ato final (sem `unlocks`)
+      // sempre traz um afixo EXCEPCIONAL só-dropa; os demais têm chance.
       const rng = makeRng((node.order + 1) * 2654435761 + Math.floor(Date.now() / 1000))
       const isFinale = !node.unlocks
-      const withExc = isFinale || rng() < 0.15 + node.order * 0.1
-      const reward = makeRewardItem(
-        baseDungeon.reward.baseId,
-        baseDungeon.reward.rarity,
-        baseDungeon.reward.name,
-        Math.max(1, node.levelReq),
-        rng,
-        withExc,
-      )
-      game.dispatch({
-        type: 'addItem',
-        item: reward,
-        tone: withExc ? 'loot' : 'good',
-        toast: withExc ? `✦ Loot excepcional: ${reward.name}!` : `Loot: ${reward.name}`,
-      })
+      const withExceptional = isFinale || rng() < 0.15 + node.order * 0.1
+      const loot = rollLoot(node.levelReq, true, rng, { luck: 0.3 + node.order * 0.15, withExceptional })
+      game.dispatch({ type: 'applyLoot', loot })
     }
     setResult(res)
     setPhase('report')

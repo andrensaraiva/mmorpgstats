@@ -30,6 +30,7 @@ import {
   talentPoints,
   treeAdjacency,
 } from './engine'
+import type { LootDrop } from './engine'
 import type {
   CurrencyPouch,
   DamageType,
@@ -176,6 +177,7 @@ type Action =
   | { type: 'completeCampaignNode'; nodeId: string }
   | { type: 'campaignReward'; xpGained: number; measured: Measured | null; win: boolean }
   | { type: 'addItem'; item: ItemInstance; toast?: string; tone?: ToastTone }
+  | { type: 'applyLoot'; loot: LootDrop }
 
 const adjacency = treeAdjacency()
 
@@ -419,6 +421,29 @@ function reducer(state: GameState, action: Action): GameState {
     case 'addItem': {
       const toasts = action.toast ? withToast(state.toasts, action.tone ?? 'loot', action.toast) : state.toasts
       return { ...state, inventory: [action.item, ...state.inventory], toasts }
+    }
+
+    case 'applyLoot': {
+      const { items, orbs } = action.loot
+      const inventory = [...items, ...state.inventory]
+      const currency = { ...state.currency }
+      for (const [orb, n] of Object.entries(orbs) as [OrbId, number][]) {
+        currency[orb] = (currency[orb] ?? 0) + n
+      }
+      let toasts = state.toasts
+      // Resumo do loot: um toast por item notável + um dos orbes.
+      const notable = items.filter((i) => i.rarity === 'rare' || i.rarity === 'unique' || i.affixes.some((a) => a.exceptional))
+      for (const it of notable) {
+        const tone: ToastTone = it.affixes.some((a) => a.exceptional) ? 'loot' : it.rarity === 'unique' ? 'loot' : 'good'
+        toasts = withToast(toasts, tone, `${it.affixes.some((a) => a.exceptional) ? '✦ ' : ''}Loot: ${it.name}`)
+      }
+      const orbCount = Object.values(orbs).reduce((s, n) => s + (n ?? 0), 0)
+      const commonItems = items.length - notable.length
+      const extras: string[] = []
+      if (commonItems > 0) extras.push(`${commonItems} item(ns)`)
+      if (orbCount > 0) extras.push(`${orbCount} orbe(s)`)
+      if (extras.length) toasts = withToast(toasts, 'good', `Também caiu: ${extras.join(' + ')}`)
+      return { ...state, inventory, currency, toasts }
     }
 
     case 'completeCampaignNode': {

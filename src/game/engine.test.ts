@@ -28,6 +28,7 @@ import {
   MAX_MASTERY,
   resolveItemMods,
   rollExceptionalAffix,
+  rollLoot,
   simulateDungeon,
   skillMasteryLevel,
   simulateRotation,
@@ -813,6 +814,28 @@ describe('IT — afixo excepcional (só-dropa)', () => {
     const fancy = makeRewardItem('plate_chest', 'rare', 'Excepcional', 60, rng, true)
     expect(plain.affixes.some((a) => a.exceptional)).toBe(false)
     expect(fancy.affixes.some((a) => a.exceptional)).toBe(true)
+  })
+
+  it('rollLoot: vitória dropa itens + orbes; derrota rende bem menos', () => {
+    const rng = makeRng(2024)
+    const win = rollLoot(40, true, rng, { luck: 0.5 })
+    expect(win.items.length).toBeGreaterThanOrEqual(1)
+    const orbCount = Object.values(win.orbs).reduce((s, n) => s + (n ?? 0), 0)
+    expect(orbCount).toBeGreaterThan(0)
+    // Vitória (média de várias) dropa mais itens que derrota.
+    let winTotal = 0
+    let loseTotal = 0
+    for (let i = 0; i < 30; i++) {
+      winTotal += rollLoot(40, true, rng).items.length
+      loseTotal += rollLoot(40, false, rng).items.length
+    }
+    expect(winTotal).toBeGreaterThan(loseTotal)
+  })
+
+  it('rollLoot com withExceptional injeta um item excepcional', () => {
+    const rng = makeRng(55)
+    const loot = rollLoot(48, true, rng, { withExceptional: true })
+    expect(loot.items.some((it) => it.affixes.some((a) => a.exceptional))).toBe(true)
   })
 
   it('o divine preserva o afixo excepcional (não reroda seus valores)', () => {

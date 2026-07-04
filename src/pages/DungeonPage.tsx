@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BESTIARY, DUNGEONS, getBase } from '../game/content'
-import { dungeonReplay, dungeonXp, simulateDungeon } from '../game/engine'
+import { dungeonReplay, dungeonXp, makeRng, rollLoot, simulateDungeon } from '../game/engine'
 import type { AttemptResult, Game } from '../game/store'
 import type {
   DamageType,
@@ -102,6 +102,11 @@ export function DungeonPage({ game }: { game: Game }) {
           result,
           measured: { fingerprint: game.currentFingerprint, dps: power.dps },
         })
+        // Loot da run (itens + orbes) — só na vitória.
+        if (outcome.survivable) {
+          const lootRng = makeRng((dungeon.lvl * 40503 + Date.now()) >>> 0)
+          game.dispatch({ type: 'applyLoot', loot: rollLoot(dungeon.lvl, true, lootRng, { luck: 0.25 }) })
+        }
       }
     }, stepMs)
   }

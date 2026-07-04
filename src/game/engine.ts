@@ -12,6 +12,7 @@ import {
   AFFIX_GROUPS,
   BASIC_ATTACK,
   BESTIARY,
+  ITEM_BASES,
   MAIN_SKILL_ID,
   SKILLS,
   SUPPORTS,
@@ -22,6 +23,7 @@ import type {
   AffixGroup,
   AffixKind,
   AilmentId,
+  CurrencyPouch,
   DamageByType,
   DamageType,
   Dungeon,
@@ -36,6 +38,7 @@ import type {
   MarkerKind,
   MarkId,
   Monster,
+  OrbId,
   Power,
   Rarity,
   ReplayMarker,
@@ -1448,6 +1451,65 @@ export function makeRewardItem(
   }
 
   return { uid: nextUid(), baseId, rarity, itemLevel, affixes, corrupted: false, name }
+}
+
+/* ===================== LOOT DE RUN (DROP) ===================== */
+/*
+   Uma run vitoriosa dropa múltiplas coisas, como num ARPG: 1–3 itens de
+   raridades variadas + alguns orbes + (às vezes) um afixo excepcional.
+   Puro/determinístico via Rng. `luck` (0..1) enriquece o resultado.
+*/
+
+const LOOT_BASE_IDS = ITEM_BASES.map((b) => b.id)
+const LOOT_ORBS: OrbId[] = ['transmutation', 'alteration', 'regal', 'exalt', 'chaos', 'divine']
+const LOOT_NAME_PREFIX = ['Vestígio', 'Despojo', 'Relíquia', 'Achado', 'Espólio', 'Fragmento']
+
+export interface LootDrop {
+  items: ItemInstance[]
+  orbs: Partial<CurrencyPouch>
+}
+
+/** Raridade sorteada, ponderada pelo nível da run + sorte. */
+function rollRarity(dungeonLevel: number, luck: number, rng: Rng): Rarity {
+  const r = rng() - luck * 0.15
+  const t = dungeonLevel / 60
+  if (r < 0.04 + t * 0.05) return 'unique'
+  if (r < 0.35 + t * 0.15) return 'rare'
+  if (r < 0.75) return 'magic'
+  return 'common'
+}
+
+/**
+ * Gera o loot de uma run. Vitória dropa 1–3 itens + orbes; derrota, um resto
+ * mínimo. `withExceptional` força um item com afixo excepcional (marcos finais).
+ */
+export function rollLoot(
+  dungeonLevel: number,
+  win: boolean,
+  rng: Rng,
+  opts: { luck?: number; withExceptional?: boolean } = {},
+): LootDrop {
+  const luck = clamp(opts.luck ?? 0, 0, 1)
+  const items: ItemInstance[] = []
+  const orbs: Partial<CurrencyPouch> = {}
+
+  const nItems = win ? 1 + Math.floor(rng() * (2 + Math.round(luck * 2))) : rng() < 0.4 ? 1 : 0
+  for (let i = 0; i < nItems; i++) {
+    const baseId = LOOT_BASE_IDS[Math.floor(rng() * LOOT_BASE_IDS.length)]
+    const rarity = rollRarity(dungeonLevel, luck, rng)
+    const name = `${LOOT_NAME_PREFIX[Math.floor(rng() * LOOT_NAME_PREFIX.length)]} ${getBase(baseId).name}`
+    const exceptional = opts.withExceptional && i === 0
+    items.push(makeRewardItem(baseId, rarity, name, Math.max(1, dungeonLevel), rng, exceptional))
+  }
+
+  // Orbes: 1–3 tipos, quantidades pequenas (vitória rende mais).
+  const orbRolls = win ? 1 + Math.floor(rng() * 3) : rng() < 0.5 ? 1 : 0
+  for (let i = 0; i < orbRolls; i++) {
+    const orb = LOOT_ORBS[Math.floor(rng() * LOOT_ORBS.length)]
+    orbs[orb] = (orbs[orb] ?? 0) + 1 + Math.floor(rng() * 2)
+  }
+
+  return { items, orbs }
 }
 
 /* ---------- árvore: utilidades puras ---------- */

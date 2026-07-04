@@ -94,8 +94,7 @@ export function SkillsPage({ game }: { game: Game }) {
   // Disponibilidade por arma equipada (S3). Nível alto por ora (o gate de
   // demonstração é a arma; o nível liga quando a progressão for real).
   const equipped = selectEquippedItems(game.state)
-  const HERO_LEVEL = 99
-  const avail = (s: SkillDefinition) => skillAvailability(s, equipped, HERO_LEVEL)
+  const avail = (s: SkillDefinition) => skillAvailability(s, equipped, game.level)
   // Contribuem DPS: golpes (damageMult>0) e fontes externas (minions/totens).
   const dpsSkills = SKILLS.filter((s) => s.damageMult > 0 || s.source)
   const utilitySkills = SKILLS.filter((s) => s.damageMult === 0 && !s.source)
