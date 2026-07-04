@@ -15,16 +15,20 @@ function enterGame() {
 }
 
 /**
- * Joga a campanha avançando enquanto vencer. Os atos finais exigem build melhor
- * (design), então pode parar antes do fim — mas os sistemas iniciais destravam.
- * Devolve quantos marcos foram vencidos.
+ * Joga a campanha avançando enquanto vencer. Cada envio anima o minimapa
+ * (setInterval), então usa fake timers para pular a animação. Os atos finais
+ * exigem build melhor (design). Devolve quantos marcos foram vencidos.
  */
 function completeCampaign(): number {
+  vi.useFakeTimers()
   let won = 0
   for (let i = 0; i < 8; i++) {
     const send = screen.queryByRole('button', { name: /Enviar Herói|Repetir encontro/ })
     if (!send) break
     fireEvent.click(send)
+    act(() => {
+      vi.advanceTimersByTime(3000) // conclui a animação → relatório
+    })
     const advance = screen.queryByRole('button', { name: 'Continuar' })
     if (advance) {
       won++
@@ -33,6 +37,7 @@ function completeCampaign(): number {
       break // derrota (só há "Voltar"): o starter chegou ao limite da build
     }
   }
+  vi.useRealTimers()
   return won
 }
 

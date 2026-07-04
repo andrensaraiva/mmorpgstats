@@ -7,13 +7,15 @@
    Ver docs/PROGRESSION_AND_STORY.md.
    ========================================================= */
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CAMPAIGN, DUNGEONS } from '../game/content'
-import { dungeonXp, makeRng, rollLoot, simulateDungeon } from '../game/engine'
+import { dungeonReplay, dungeonXp, makeRng, rollLoot, simulateDungeon } from '../game/engine'
 import type { AttemptResult, Game } from '../game/store'
 import type { CampaignNode, Dungeon } from '../game/types'
+import { fmtTime } from '../ui/format'
 import { PageHead, Panel } from '../ui/atoms'
 import { CountUp } from '../ui/CountUp'
+import { DungeonMinimap, EncounterPreview, replaySeed } from '../ui/encounter'
 
 /**
  * A campanha reusa as dungeons endgame (nível ~44+), mas as escala pelo nível
@@ -119,12 +121,21 @@ function CampaignEncounter({
 }) {
   const baseDungeon = DUNGEONS.find((d) => d.id === node.dungeonId)!
   const dungeon = scaledCampaignDungeon(baseDungeon, node)
-  const [phase, setPhase] = useState<'idle' | 'report'>('idle')
+  const outcome = simulateDungeon(dungeon, game.power)
+  const [phase, setPhase] = useState<'idle' | 'running' | 'report'>('idle')
   const [result, setResult] = useState<AttemptResult | null>(null)
+  const [progress, setProgress] = useState(0)
+  const timer = useRef<number | undefined>(undefined)
   const underLevelled = game.level < node.levelReq
+  const alreadyDone = status === 'done'
 
-  const send = () => {
-    const run = simulateDungeon(dungeon, game.power)
+  const replay = dungeonReplay(dungeon, outcome, replaySeed(dungeon.id, game.currentFingerprint))
+
+  useEffect(() => () => window.clearInterval(timer.current), [])
+
+  /** Aplica os efeitos da tentativa (chamado ao fim da animação). */
+  const resolve = () => {
+    const run = outcome
     const xpGained = dungeonXp(
       dungeon.lvl,
       run.survivable,
@@ -138,8 +149,6 @@ function CampaignEncounter({
       potionsUsed: run.report.potionsUsed, timeControlled: run.report.timeControlled,
       peakDps: run.report.peakDps, incomingDps: run.report.incomingDps, xpGained,
     }
-    // Concede XP + descobre o DPS sem poluir o relatório da Masmorra; ao vencer,
-    // conclui o marco (desbloqueia o sistema) e concede o loot garantido.
     game.dispatch({
       type: 'campaignReward',
       xpGained,
@@ -148,8 +157,6 @@ function CampaignEncounter({
     })
     if (run.survivable) {
       game.completeCampaignNode(node.id)
-      // Loot da run (múltiplos itens + orbes). O ato final (sem `unlocks`)
-      // sempre traz um afixo EXCEPCIONAL só-dropa; os demais têm chance.
       const rng = makeRng((node.order + 1) * 2654435761 + Math.floor(Date.now() / 1000))
       const isFinale = !node.unlocks
       const withExceptional = isFinale || rng() < 0.15 + node.order * 0.1
@@ -160,7 +167,22 @@ function CampaignEncounter({
     setPhase('report')
   }
 
-  const alreadyDone = status === 'done'
+  /** Envia o herói: anima o minimapa e, ao fim, resolve a tentativa. */
+  const send = () => {
+    setPhase('running')
+    setProgress(0)
+    const realMs = Math.max(900, Math.min(2600, outcome.seconds * 7))
+    const steps = Math.max(6, Math.round(realMs / 40))
+    let i = 0
+    timer.current = window.setInterval(() => {
+      i += 1
+      setProgress(Math.min(100, (i / steps) * 100))
+      if (i >= steps) {
+        window.clearInterval(timer.current)
+        resolve()
+      }
+    }, 40)
+  }
 
   return (
     <Panel title={node.title}>
@@ -171,8 +193,11 @@ function CampaignEncounter({
       {phase === 'idle' ? (
         <>
           <p className="camp-narr">{node.intro}</p>
-          <div className="camp-meta tiny muted">
-            Encontro: <b>{dungeon.name}</b> · {dungeon.biome} · Nv {dungeon.lvl}
+          <div className="eyebrow mt10 mb6">O encontro</div>
+          <EncounterPreview dungeon={dungeon} />
+          <div className="camp-meta tiny muted mt6">
+            Tempo estimado: <b className={outcome.survivable ? 'teal' : 'blood'}>{fmtTime(outcome.seconds)}</b>
+            {outcome.survivable ? '' : <b className="blood"> · morte provável — {outcome.cause}</b>}
             {node.unlocks ? <> · Recompensa: <b className="gold-text">destrava um sistema</b></> : null}
           </div>
           {underLevelled && !alreadyDone ? (
@@ -186,6 +211,17 @@ function CampaignEncounter({
             </button>
           </div>
         </>
+      ) : phase === 'running' ? (
+        <div className="attempt-box">
+          <div className="progress-label">Simulando combate…</div>
+          <DungeonMinimap replay={replay} progress={progress} />
+          <div className="progress-track">
+            <div className="progress-fill" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="snap">
+            tempo simulado {fmtTime((progress / 100) * outcome.seconds)} · {dungeon.name}
+          </div>
+        </div>
       ) : (
         <CampaignReport
           node={node}

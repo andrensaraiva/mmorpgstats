@@ -1,49 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BESTIARY, DUNGEONS, getBase } from '../game/content'
+import { DUNGEONS, getBase } from '../game/content'
 import { dungeonReplay, dungeonXp, makeRng, rollLoot, simulateDungeon } from '../game/engine'
 import type { AttemptResult, Game } from '../game/store'
-import type {
-  DamageType,
-  Density,
-  DungeonReplay,
-  ForceProfile,
-  MarkerKind,
-  MobilityDemand,
-  MonsterRole,
-} from '../game/types'
+import type { DamageType } from '../game/types'
 import { fmtInt, fmtTime, rarClass } from '../ui/format'
 import { PageHead, Panel, PowerBar } from '../ui/atoms'
 import { ItemIcon } from '../ui/icons'
 import { CountUp } from '../ui/CountUp'
-
-const TYPE_LABEL: Record<DamageType, string> = {
-  phys: 'Físico', fire: 'Fogo', cold: 'Frio', lightning: 'Raio', chaos: 'Caos',
-}
-const DENSITY_LABEL: Record<Density, string> = {
-  sparse: 'Esparso', medium: 'Densidade média', swarm: 'Enxame',
-}
-const FORCE_LABEL: Record<ForceProfile, string> = {
-  'weak-horde': 'Horda fraca', mixed: 'Misto', 'few-strong': 'Poucos, porém fortes',
-}
-const MOBILITY_LABEL: Record<MobilityDemand, string> = {
-  low: 'Mobilidade: baixa', medium: 'Mobilidade: média', high: 'Mobilidade: alta',
-}
-const ROLE_LABEL: Record<MonsterRole, string> = {
-  swarmer: 'Enxame', bruiser: 'Brutamontes', ranged: 'Atirador',
-  caster: 'Conjurador', support: 'Suporte', aerial: 'Aéreo',
-}
-const monsterById = Object.fromEntries(BESTIARY.map((m) => [m.id, m]))
-
-/** Seed estável do replay: dungeon + fingerprint da build (mesma build → mesmo replay). */
-function replaySeed(dungeonId: string, fingerprint: string): number {
-  let h = 2166136261
-  const s = `${dungeonId}#${fingerprint}`
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return h >>> 0
-}
+import { DungeonMinimap, EncounterPreview, TYPE_LABEL, replaySeed } from '../ui/encounter'
 
 export function DungeonPage({ game }: { game: Game }) {
   const { state, power } = game
@@ -133,51 +97,12 @@ export function DungeonPage({ game }: { game: Game }) {
                 className={`dcard${d.id === state.selectedDungeon ? ' sel' : ''}`}
                 onClick={() => game.selectDungeon(d.id)}
               >
-                {d.fireThreat ? <span className="badge-risk">ÍGNEO · res≥{d.fireReq}%</span> : null}
                 <div className="dbiome">
                   {d.biome} · Nv {d.lvl}
                   {d.season ? ' · SAZONAL' : ''}
                 </div>
                 <div className="dname">{d.name}</div>
-                <div className="dmods">
-                  {d.mods.map((m) => (
-                    <span className="dmod" key={m}>
-                      {m}
-                    </span>
-                  ))}
-                </div>
-                {d.composition ? (
-                  <div className="dcomp">
-                    <div className="dcomp__row">
-                      <span className="dchip">{DENSITY_LABEL[d.composition.density]}</span>
-                      <span className="dchip">{FORCE_LABEL[d.composition.forceProfile]}</span>
-                      <span className="dchip">{MOBILITY_LABEL[d.composition.mobilityDemand]}</span>
-                      {d.composition.hasAerial ? <span className="dchip dchip--warn">Voadores</span> : null}
-                    </div>
-                    <div className="dcomp__row">
-                      <span className="dcomp__k">Dano:</span>
-                      {d.composition.damageMix.map((t) => (
-                        <span className={`dtype dtype--${t}`} key={t}>{TYPE_LABEL[t]}</span>
-                      ))}
-                    </div>
-                    <div className="dcomp__row">
-                      <span className="dcomp__k">Bestiário:</span>
-                      {d.composition.waves.map((w) => {
-                        const mon = monsterById[w.monsterId]
-                        if (!mon) return null
-                        return (
-                          <span
-                            className={`dmob dmob--${mon.rank}`}
-                            key={w.monsterId}
-                            title={`${ROLE_LABEL[mon.role]}${mon.aerial ? ' · aéreo' : ''}`}
-                          >
-                            {mon.name} ×{w.count}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ) : null}
+                <EncounterPreview dungeon={d} />
                 <div className="ddesc">{d.desc}</div>
                 <div className="dcard__eta">
                   <span className={`etak ${etaCls}`}>
@@ -344,86 +269,3 @@ function Report({ game }: { game: Game }) {
   )
 }
 
-/* ===================== MINIMAPA (replay leve da tentativa) ===================== */
-
-const MARKER_GLYPH: Record<MarkerKind, string> = {
-  player: '◈',
-  enemy: '•',
-  elite: '✦',
-  boss: '☠',
-  loot: '◆',
-}
-
-/** Posição do herói interpolada ao longo da rota, conforme o progresso (0–1). */
-function heroPosition(replay: DungeonReplay, t: number): { x: number; y: number } {
-  const pts = replay.path
-  if (pts.length === 1) return pts[0]
-  // A rota é percorrida até `endsAt` (morte antecipada para antes do fim).
-  const walked = Math.min(t, replay.endsAt) / replay.endsAt
-  const span = (pts.length - 1) * Math.max(0, Math.min(1, walked))
-  const i = Math.min(pts.length - 2, Math.floor(span))
-  const f = span - i
-  return {
-    x: pts[i].x + (pts[i + 1].x - pts[i].x) * f,
-    y: pts[i].y + (pts[i + 1].y - pts[i].y) * f,
-  }
-}
-
-function DungeonMinimap({ replay, progress }: { replay: DungeonReplay; progress: number }) {
-  const t = progress / 100
-  const hero = heroPosition(replay, t)
-  // Morte: quando o progresso ultrapassa o fim da rota numa tentativa perdida.
-  const died = !replay.win && t >= replay.endsAt - 0.001
-
-  // Resumo textual do avanço, para leitor de tela.
-  const cleared = replay.markers.filter((m) => m.kind !== 'player' && t >= m.at).length
-  const total = replay.markers.filter((m) => m.kind !== 'player').length
-  const label = died
-    ? 'Herói tombou durante a tentativa.'
-    : `Progresso da tentativa: ${Math.round(progress)}%. ${cleared} de ${total} encontros alcançados.`
-
-  return (
-    <div className="minimap" role="img" aria-label={label}>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="minimap__svg">
-        {/* Rota percorrida (rastro do herói). */}
-        <polyline
-          className="minimap__trail"
-          points={replay.path.map((p) => `${p.x},${p.y}`).join(' ')}
-        />
-        {/* Marcadores: acendem quando o progresso passa do seu `at`. */}
-        {replay.markers
-          .filter((m) => m.kind !== 'player')
-          .map((m) => {
-            const reached = t >= m.at
-            const cls =
-              `mk mk--${m.kind}` +
-              (reached ? ' is-on' : '') +
-              (m.kind === 'loot' && m.rarity ? ` ${rarClass(m.rarity)}` : '')
-            return (
-              <text key={m.id} x={m.x} y={m.y} className={cls} dominantBaseline="central" textAnchor="middle">
-                <title>{m.label}</title>
-                {MARKER_GLYPH[m.kind]}
-              </text>
-            )
-          })}
-        {/* Herói. */}
-        <text
-          x={hero.x}
-          y={hero.y}
-          className={`mk mk--player${died ? ' is-dead' : ''}`}
-          dominantBaseline="central"
-          textAnchor="middle"
-        >
-          {died ? '✝' : MARKER_GLYPH.player}
-        </text>
-      </svg>
-      <div className="minimap__legend tiny muted">
-        <span className="mk--player">◈ herói</span>
-        <span className="mk--enemy">• inimigo</span>
-        <span className="mk--elite">✦ elite</span>
-        <span className="mk--boss">☠ chefe</span>
-        <span className="mk--loot rar-rare">◆ loot raro</span>
-      </div>
-    </div>
-  )
-}

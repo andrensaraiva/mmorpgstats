@@ -145,6 +145,7 @@ O `XP` entra no `DungeonOutcome`/relatório (hoje o outcome já tem `seconds`/`s
   - **Loot múltiplo por run** (`rollLoot`): 1–3 itens de raridades variadas + orbes + excepcional (marcos finais); toasts resumem o que caiu. **Orbes agora caem** (deixaram de ser só estoque inicial).
   - **Painel de subida de nível** (`LevelUp.tsx`): ao upar, mostra o que ganhou (+pontos de talento, habilidades liberadas) e para onde ir (Árvore/Habilidades).
   - **Dicas contextuais:** guia de "como usar as orbes" na bancada; dica de pontos na Árvore.
+  - **Paridade com a Masmorra (03/jul):** cada marco da campanha mostra o **preview do encontro** (composição: densidade/força/mobilidade/voadores; tipos de dano; **bestiário** com monstros × contagem; mods) da dungeon **escalada** pelo `levelReq`, o **tempo estimado/dificuldade**, e uma **fase animada com o minimapa** do replay antes do relatório — exatamente como a Masmorra. Componentes `EncounterPreview` e `DungeonMinimap` extraídos para `src/ui/encounter.tsx` e reusados pelas duas telas.
 - **P3:** ascendência por marco + respec/loadouts baratos.
 - **P4:** injeção sazonal na campanha + "pular relato" por conta.
 
