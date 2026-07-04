@@ -892,6 +892,57 @@ export const SKILLS: SkillDefinition[] = [
     castTime: 0,
     defaultSockets: [],
   },
+  // ==================== EXPANSÃO DE HABILIDADES (por arquétipo, escalonadas por nível) ====================
+  {
+    id: 'sk_cleave', name: 'Talho Amplo', type: 'atk', glyph: '⚒',
+    tags: ['ataque', 'área', 'físico', 'corpo-a-corpo'],
+    meta: 'ATIVA · custo 12 · guiado pela vel. de ataque',
+    desc: 'Um talho largo que atinge tudo à frente — a ferramenta contra HORDAS. Físico, escala com a arma.',
+    damageMult: 0.75, requires: { weapon: ['axe', 'mace', 'sword'], level: 3 },
+    cost: 12, cooldown: 0, castTime: 0, defaultSockets: ['s_aoe'],
+  },
+  {
+    id: 'sk_charge', name: 'Investida Brutal', type: 'atk', glyph: '➤',
+    tags: ['ataque', 'corpo-a-corpo', 'físico', 'atordoamento'],
+    meta: 'ATIVA · custo 18 · rec 4s · aplica Exposição',
+    desc: 'Avança e esmaga o alvo, abrindo a Exposição — o setup marcial de dano grande.',
+    damageMult: 1.4, requires: { weapon: ['axe', 'mace'], level: 10 },
+    cost: 18, cooldown: 4, castTime: 0.4, applies: 'exposure', appliesDuration: 4, defaultSockets: ['s_brutal'],
+  },
+  {
+    id: 'sk_frostbolt', name: 'Lança de Gelo', type: 'spell', glyph: '❄',
+    tags: ['conjuração', 'projétil', 'frio', 'elemental'],
+    meta: 'ATIVA · custo 12 · conj. 0.5s',
+    desc: 'Um dardo de FRIO que perfura e resfria. Dano próprio, escala com dano elemental.',
+    damageMult: 0.9, damageType: 'cold', baseDamage: { min: 26, max: 44 },
+    requires: { weapon: ['staff', 'wand'], level: 6 },
+    cost: 12, cooldown: 0, castTime: 0.5, defaultSockets: [],
+  },
+  {
+    id: 'sk_barrage', name: 'Saraivada', type: 'atk', glyph: '⇶',
+    tags: ['ataque', 'projétil', 'físico'],
+    meta: 'ATIVA · custo 14 · guiado pela vel. de ataque',
+    desc: 'Dispara uma rajada de flechas — vazão à distância contra grupos. Escala com a arma.',
+    damageMult: 0.7, requires: { weapon: ['bow', 'crossbow'], level: 4 },
+    cost: 14, cooldown: 0, castTime: 0, defaultSockets: ['s_proj'],
+  },
+  {
+    id: 'sk_reckoning', name: 'Julgamento', type: 'atk', glyph: '⚡',
+    tags: ['ataque', 'corpo-a-corpo', 'físico', 'sangramento', 'dot'],
+    meta: 'ATIVA · custo 22 · rec 6s · aplica Sangramento pesado',
+    desc: 'Um golpe executor que faz sangrar profundamente — payoff marcial de DoT em alvos fortes.',
+    damageMult: 1.6, requires: { weapon: ['axe', 'sword', 'mace'], level: 20 },
+    cost: 22, cooldown: 6, castTime: 0, ailment: 'bleed', ailmentMult: 0.8, ailmentDuration: 4, defaultSockets: ['s_dot'],
+  },
+  {
+    id: 'sk_meteor', name: 'Meteoro', type: 'spell', glyph: '☄',
+    tags: ['conjuração', 'área', 'fogo', 'elemental'],
+    meta: 'ATIVA · custo 30 · rec 5s · aplica Queimadura',
+    desc: 'Invoca um meteoro que explode em FOGO e incendeia a área — o payoff do elementalista.',
+    damageMult: 1.8, damageType: 'fire', baseDamage: { min: 60, max: 110 },
+    requires: { weapon: ['staff', 'wand'], level: 24 },
+    cost: 30, cooldown: 5, castTime: 0.8, ailment: 'ignite', ailmentMult: 0.6, ailmentDuration: 4, defaultSockets: ['s_elem'],
+  },
 ]
 
 /**
@@ -1308,6 +1359,54 @@ export const UNIQUES: UniqueTemplate[] = [
       { values: { flatLife: 40 }, text: '+40 vida máxima' },
     ],
     flavor: '"O fogo lembra quem o desafiou."',
+  },
+  // ---- Marcial: dano físico + vida (investida/sangramento) ----
+  {
+    id: 'u_bonecrusher', name: 'Quebra-Ossos', baseId: 'war_hammer', itemLevel: 40,
+    affixes: [
+      { values: { incPhys: 80 }, text: '+80% dano físico aumentado' },
+      { values: { flatLife: 60 }, text: '+60 vida máxima' },
+      { values: { critMulti: 30 }, text: '+30% multiplicador de crítico' },
+    ],
+    flavor: '"Cada golpe é uma sentença."',
+  },
+  // ---- Elementalista: dano elemental + penetração ----
+  {
+    id: 'u_stormcaller', name: 'Voz da Tempestade', baseId: 'runed_staff', itemLevel: 44,
+    affixes: [
+      { values: { incElemental: 70 }, text: '+70% dano elemental aumentado' },
+      { values: { lightningPen: 12, firePen: 12, coldPen: 12 }, text: 'Penetra 12% das resistências elementais' },
+    ],
+    flavor: '"O céu obedece a quem não teme o trovão."',
+  },
+  // ---- DoT / veneno: dano de DoT + res. caos ----
+  {
+    id: 'u_plaguemaw', name: 'Fauce Pestilenta', baseId: 'jade_amulet', itemLevel: 36,
+    implicit: { chaosRes: 20 },
+    affixes: [
+      { values: { incDot: 60 }, text: '+60% dano de DoT aumentado' },
+      { values: { chaosRes: 25 }, text: '+25% resistência a caos' },
+    ],
+    flavor: '"A morte é lenta, mas é certa."',
+  },
+  // ---- Defensivo: EHP (evasão + ES + vida) para segurar os atos finais ----
+  {
+    id: 'u_aegis', name: 'Égide Cintilante', baseId: 'arcane_vestment', itemLevel: 46,
+    affixes: [
+      { values: { energyShield: 180 }, text: '+180 escudo de energia' },
+      { values: { incEnergyShield: 40 }, text: '+40% escudo de energia aumentado' },
+      { values: { chaosRes: 20 }, text: '+20% resistência a caos' },
+    ],
+    flavor: '"O que absorve o caos não teme o abismo."',
+  },
+  // ---- Invocador: dano de minions ----
+  {
+    id: 'u_bonelord', name: 'Coroa do Senhor dos Ossos', baseId: 'scale_helm', itemLevel: 38,
+    affixes: [
+      { values: { incMinion: 80 }, text: '+80% dano de minions' },
+      { values: { flatLife: 80 }, text: '+80 vida máxima' },
+    ],
+    flavor: '"Os mortos servem a quem sabe ordenar."',
   },
 ]
 

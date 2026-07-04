@@ -17,7 +17,9 @@ import {
   SKILLS,
   SUPPORTS,
   TREE,
+  UNIQUES,
   getBase,
+  makeUnique,
 } from './content'
 import type {
   AffixGroup,
@@ -1495,6 +1497,11 @@ export function rollLoot(
 
   const nItems = win ? 1 + Math.floor(rng() * (2 + Math.round(luck * 2))) : rng() < 0.4 ? 1 : 0
   for (let i = 0; i < nItems; i++) {
+    // Chance pequena (cresce com a sorte) de um ÚNICO cair inteiro.
+    if (win && UNIQUES.length && rng() < 0.05 + luck * 0.1) {
+      items.push(makeUnique(UNIQUES[Math.floor(rng() * UNIQUES.length)].id))
+      continue
+    }
     const baseId = LOOT_BASE_IDS[Math.floor(rng() * LOOT_BASE_IDS.length)]
     const rarity = rollRarity(dungeonLevel, luck, rng)
     const name = `${LOOT_NAME_PREFIX[Math.floor(rng() * LOOT_NAME_PREFIX.length)]} ${getBase(baseId).name}`
