@@ -139,6 +139,12 @@ O `XP` entra no `DungeonOutcome`/relatório (hoje o outcome já tem `seconds`/`s
 ### 7.1 Faseamento
 - ✅ **P1 — CONCLUÍDO (03/jul).** Curva de XP/nível pura no engine (`xpForLevel`/`levelForXp`/`levelProgress`/`dungeonXp`, `MAX_LEVEL` 60); `xp` no store (nível deriva daí), XP concedido por tentativa (`xpGained`), toast de "+XP" e "⬆ Nível". `CampaignNode[]` em `content.ts`: trilha de 5 marcos (Prólogo→Ato IV) que **reusam as dungeons** (escaladas pelo `levelReq` do marco em `CampaignPage`, para serem vencíveis na progressão). Tela **`CampaignPage`**: trilha (concluído/atual/travado), intro/outcome narrativos, "o que ensina", enviar o herói (roda `simulateDungeon`), relatório com count-up de XP. Barra de XP na top bar.
 - ✅ **P2 — CONCLUÍDO (03/jul).** Desbloqueio progressivo: `unlockedSystems`/`completedNodes` no store; `completeCampaignNode` marca o marco e destrava o sistema (toast). A **nav do App filtra** as abas: sempre-abertas (Portal/Campanha/Personagem/Habilidades) + as destravadas (Equipamento→prólogo, Árvore→Ato I, Masmorra→Ato II, Mercado→Ato III). Smoke test de integração cobre o fluxo.
+- ✅ **Camada de progressão legível (03/jul) — o guia do jogador.** Além dos sistemas, o jogo agora **conduz**:
+  - **Pontos de talento** (`talentPoints` = 1/nível + 2/marco): a árvore gasta pontos ganhos (não mais limite fixo); o starter começa só na origem. HUD e dica na Árvore; badge na nav com os pontos a gastar.
+  - **Habilidades por nível:** skills avançadas têm `requires.level`; a tela mostra as travadas com "Requer nível N".
+  - **Loot múltiplo por run** (`rollLoot`): 1–3 itens de raridades variadas + orbes + excepcional (marcos finais); toasts resumem o que caiu. **Orbes agora caem** (deixaram de ser só estoque inicial).
+  - **Painel de subida de nível** (`LevelUp.tsx`): ao upar, mostra o que ganhou (+pontos de talento, habilidades liberadas) e para onde ir (Árvore/Habilidades).
+  - **Dicas contextuais:** guia de "como usar as orbes" na bancada; dica de pontos na Árvore.
 - **P3:** ascendência por marco + respec/loadouts baratos.
 - **P4:** injeção sazonal na campanha + "pular relato" por conta.
 

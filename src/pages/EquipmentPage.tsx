@@ -368,7 +368,20 @@ function CraftPanel({ game, selected }: { game: Game; selected: ItemInstance | n
           )}
         </>
       ) : (
-        <div className="tiny muted">Selecione um item no inventário ou no manequim para craftar.</div>
+        <div className="craft-help">
+          <div className="tiny muted mb8">Selecione um item no inventário para craftar com orbes.</div>
+          <div className="eyebrow mb6">Como usar as orbes</div>
+          <ul className="orb-help">
+            <li><b>Transmutação</b>: comum → mágico (1 afixo).</li>
+            <li><b>Alteração</b>: reroda os afixos de um item mágico.</li>
+            <li><b>Régio</b>: mágico → raro (+1 afixo).</li>
+            <li><b>Exaltado</b>: adiciona um afixo a um raro com espaço.</li>
+            <li><b>Caos</b>: reroda todos os afixos de um raro.</li>
+            <li><b>Divino</b>: reroda só os valores, mantendo os afixos.</li>
+            <li><b className="blood">Vaal</b>: corrompe — imprevisível e irreversível.</li>
+          </ul>
+          <div className="tiny muted mt6">As orbes <b>caem das runs</b> — vença dungeons e marcos para acumulá-las.</div>
+        </div>
       )}
     </Panel>
   )

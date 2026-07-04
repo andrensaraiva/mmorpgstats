@@ -4700,6 +4700,101 @@ a {
   border-style: dashed;
 }
 
+/* ===================== LVLUP — painel de subida de nível ===================== */
+.lvlup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(4 5 7 / 78%);
+  backdrop-filter: blur(2px);
+  animation: onb-fade 0.2s ease-out;
+}
+.lvlup {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 24px 24px 18px;
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgb(90 70 20 / 30%), transparent 65%),
+    linear-gradient(180deg, #141922, #0c0f14);
+  box-shadow: var(--shadow-3);
+  text-align: center;
+  animation: onb-pop 0.26s ease-out;
+}
+.lvlup__glyph {
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--gold-hi);
+  text-shadow: 0 0 22px rgb(236 208 133 / 45%);
+}
+.lvlup__title {
+  font-family: 'Cinzel', serif;
+  color: var(--parch);
+  font-size: 1.5rem;
+  margin: 2px 0 12px;
+}
+.lvlup__gains {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lvlup__gains li {
+  padding: 8px 12px;
+  border-left: 2px solid var(--gold-lo);
+  background: rgb(0 0 0 / 22%);
+  border-radius: 0 3px 3px 0;
+  line-height: 1.5;
+}
+.lvlup__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* dica de orbes na bancada de crafting (BADGE/guia) */
+.orb-help {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+.orb-help b {
+  color: var(--gold-hi);
+}
+
+/* badge "algo a fazer" na nav (BADGE) */
+.nb-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--blood-hi);
+  color: #fff;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+  animation: badge-pulse 1.6s ease-in-out infinite;
+}
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(227 90 79 / 60%); }
+  50% { box-shadow: 0 0 0 4px rgb(227 90 79 / 0%); }
+}
+
 /* dica contextual (PT) — pontos de talento a gastar, etc. */
 .talent-hint {
   margin-bottom: 12px;

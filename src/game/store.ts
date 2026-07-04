@@ -103,6 +103,8 @@ export interface GameState {
   unlockedSystems: SystemId[]
   /** XP de maestria por skillId (SK1) — sobe usando a skill em vitórias. */
   skillXp: Record<string, number>
+  /** Sinal de subida de nível a exibir no painel de recompensa (LVLUP). */
+  levelUp: { from: number; to: number } | null
   inventory: ItemInstance[]
   equipped: Partial<Record<EquipSlot, string>>
   allocated: Set<string>
@@ -132,6 +134,7 @@ function initState(): GameState {
     completedNodes: [],
     unlockedSystems: [],
     skillXp: {},
+    levelUp: null,
     inventory: starter.inventory,
     equipped: starter.equipped,
     // Começa só na origem: os pontos de talento são ganhos e gastos pelo jogador (PT).
@@ -178,6 +181,7 @@ type Action =
   | { type: 'campaignReward'; xpGained: number; measured: Measured | null; win: boolean }
   | { type: 'addItem'; item: ItemInstance; toast?: string; tone?: ToastTone }
   | { type: 'applyLoot'; loot: LootDrop }
+  | { type: 'dismissLevelUp' }
 
 const adjacency = treeAdjacency()
 
@@ -373,6 +377,7 @@ function reducer(state: GameState, action: Action): GameState {
         attemptResult: action.result,
         measured: action.measured ?? state.measured,
         toasts,
+        levelUp: after > before ? { from: before, to: after } : state.levelUp,
       }
     }
 
@@ -399,6 +404,9 @@ function reducer(state: GameState, action: Action): GameState {
     case 'dismissToast':
       return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) }
 
+    case 'dismissLevelUp':
+      return { ...state, levelUp: null }
+
     case 'campaignReward': {
       // Concede XP + mede o DPS SEM mexer no relatório global da Masmorra
       // (a campanha tem seu próprio relatório local).
@@ -415,7 +423,14 @@ function reducer(state: GameState, action: Action): GameState {
         skillXp = m.skillXp
         for (const id of m.leveled) toasts = withToast(toasts, 'good', `★ Maestria: ${skillName(id)} subiu`)
       }
-      return { ...state, xp, skillXp, measured: action.measured ?? state.measured, toasts }
+      return {
+        ...state,
+        xp,
+        skillXp,
+        measured: action.measured ?? state.measured,
+        toasts,
+        levelUp: after > before ? { from: before, to: after } : state.levelUp,
+      }
     }
 
     case 'addItem': {
@@ -613,6 +628,7 @@ export function useGame() {
     (nodeId: string) => dispatch({ type: 'completeCampaignNode', nodeId }),
     [],
   )
+  const dismissLevelUp = useCallback(() => dispatch({ type: 'dismissLevelUp' }), [])
 
   return {
     state,
@@ -637,6 +653,7 @@ export function useGame() {
     measureDummy,
     applyCraft,
     completeCampaignNode,
+    dismissLevelUp,
     pushToast,
     dismissToast,
     dispatch,

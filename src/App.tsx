@@ -18,6 +18,7 @@ import { useState } from 'react'
 import { ItemTipProvider } from './ui/tooltip'
 import { ToastHost } from './ui/Toasts'
 import { Onboarding, hasSeenOnboarding } from './ui/Onboarding'
+import { LevelUpModal } from './ui/LevelUp'
 
 export function App() {
   const session = useSession()
@@ -60,6 +61,16 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
   // Uma aba está liberada se é sempre-aberta ou seu sistema foi destravado (P2).
   const isOpen = (id: ViewId) => ALWAYS_OPEN.includes(id) || unlockedSystems.includes(id as never)
   const visibleNav = NAV.filter((n) => isOpen(n.id as ViewId))
+
+  // Badge "algo a fazer" por aba (BADGE): pontos de talento a gastar, etc.
+  const navBadge = (id: ViewId): string | null => {
+    if (id === 'arvore' && game.talent.available > 0) return String(game.talent.available)
+    if (id === 'campanha') {
+      const done = game.state.completedNodes.length
+      return done < 5 ? '!' : null // ainda há marcos a jogar
+    }
+    return null
+  }
 
   return (
     <div className="app">
@@ -115,17 +126,21 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
       </header>
 
       <nav className="app-nav" aria-label="Navegação principal">
-        {visibleNav.map((n) => (
-          <button
-            key={n.id}
-            className={`navbtn${n.id === page ? ' is-active' : ''}`}
-            aria-current={n.id === page ? 'page' : undefined}
-            onClick={() => game.navigate(n.id as ViewId)}
-          >
-            {n.label}
-            {n.tag ? <span className="nb-tag">{n.tag}</span> : null}
-          </button>
-        ))}
+        {visibleNav.map((n) => {
+          const badge = navBadge(n.id as ViewId)
+          return (
+            <button
+              key={n.id}
+              className={`navbtn${n.id === page ? ' is-active' : ''}`}
+              aria-current={n.id === page ? 'page' : undefined}
+              onClick={() => game.navigate(n.id as ViewId)}
+            >
+              {n.label}
+              {badge ? <span className="nb-badge" title="Há algo a fazer aqui">{badge}</span> : null}
+              {n.tag ? <span className="nb-tag">{n.tag}</span> : null}
+            </button>
+          )
+        })}
       </nav>
 
       <main className="app-main" id="main-content" tabIndex={-1}>
@@ -148,7 +163,7 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
       </footer>
 
       <ToastHost toasts={game.state.toasts} onDismiss={game.dismissToast} />
-      {showOnboarding ? <Onboarding onClose={() => setShowOnboarding(false)} /> : null}
+      {showOnboarding ? <Onboarding onClose={() => setShowOnboarding(false)} /> : <LevelUpModal game={game} />}
     </div>
   )
 }

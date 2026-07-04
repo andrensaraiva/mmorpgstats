@@ -4,8 +4,8 @@
 - **Objetivo desta fase:** juntar os dois protótipos existentes em **um único** protótipo novo e evoluí-lo conforme o feedback do dono.
 - **Status:** consolidação concluída; **Polish A–E** + F1/F2/F3 (resta só a **F, arte/áudio**); **combate R1–R4** (rotação/boneco/dungeon tank×DPS); e o **MOTOR COMPLETO — M1 (multi-tipo), M2 (evasão/ES/armadura por golpe), M3 (ailments/DoT), M4 (minions/totens) CONCLUÍDOS; M5 (execução por ticks) fechado via R1–R4 + M1–M4**. Fontes: [COMBAT_AND_ARCHETYPES §A4](./COMBAT_AND_ARCHETYPES.md), [COMBAT_ROTATION_AND_DUMMY §7](./COMBAT_ROTATION_AND_DUMMY.md). O que resta é **tuning de balanceamento** e as trilhas de **conteúdo/persistência/online** — não novo sistema de motor.
 - **Item rico + skills por arma (trilha S):** **S1/S2/S3 CONCLUÍDOS** — ver [EQUIPMENT_SKILLS_DESIGN §7](./EQUIPMENT_SKILLS_DESIGN.md).
-- **Progressão jogável + mecânicas-assinatura (NOVO):** **P1/P2** (XP, níveis, campanha que destrava o jogo — [PROGRESSION_AND_STORY §7.1](./PROGRESSION_AND_STORY.md)); **afixo excepcional só-dropa** ([ARPG_RESEARCH §8.5](./ARPG_RESEARCH.md)); **maestria de skill (SK1)** e **selo elemental (SK2)** ([EQUIPMENT_SKILLS_DESIGN §8.6](./EQUIPMENT_SKILLS_DESIGN.md)) — **todos CONCLUÍDOS**.
-- **Último commit:** `de8c9fe` (SK2 — selo elemental). Branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
+- **Progressão jogável + mecânicas-assinatura (NOVO):** **P1/P2** (XP, níveis, campanha que destrava o jogo) + **camada de guia** (pontos de talento por nível/marco, habilidades por nível, loot múltiplo com orbes dropadas, painel de level up, badges e dicas) — [PROGRESSION_AND_STORY §7.1](./PROGRESSION_AND_STORY.md); **afixo excepcional só-dropa**; **maestria (SK1)** e **selo elemental (SK2)** — **todos CONCLUÍDOS**.
+- **Último commit:** progressão legível (LVLUP/BADGE) desta sessão. Branch `main`, origin = github.com/andrensaraiva/mmorpgstats.
 
 > Para o próximo assistente/sessão: leia este arquivo inteiro. Comece pela **§5 — Ponto de partida** (é onde a fase de Polish parou). O fluxo de trabalho do dono: **commite cada etapa, atualize os docs, push perto do fim da sessão** (typecheck+test+build verdes a cada passo).
 
@@ -40,7 +40,7 @@ Tudo vive no app React da raiz. Núcleo de jogo separado da UI, em `src/game/`:
 - **`src/styles/global.css`** — visual POE full-width portado do `prototype-claude/styles.css`.
 
 ### Validação técnica (verde a cada commit)
-- `npm run typecheck` sem erros · `npm test` — **88 testes** aprovados · `npm run build` (tsc + vite) concluído.
+- `npm run typecheck` sem erros · `npm test` — **91 testes** aprovados · `npm run build` (tsc + vite) concluído.
 - Núcleo do **motor** (`engine.ts`) segue **puro e determinístico**: durante o polish (A–F) ficou intocado; a trilha de combate R1–R4 **adicionou** `simulateRotation`/`simulateDungeon` como novas funções puras cobertas por testes (mesma filosofia do `aggregate` — sem estado, sem RNG no número oficial). O `store.ts` (React) orquestra loadout/measured/toasts.
 
 ---
@@ -106,8 +106,11 @@ Notas: a **galeria** (`?dev=gallery`) mostra os átomos; o **manifesto de tema**
 ### ▶ ROTEIRO DE TESTE MANUAL (próxima sessão)
 `npm run dev` → http://localhost:5173/. Entre com um herói (auth mockada) e percorra:
 
-**★ PROGRESSÃO (o novo — teste isto primeiro).** O jogo agora **abre na Campanha** (as demais abas nascem travadas):
-- **Campanha (P1/P2):** a trilha tem 5 marcos (Prólogo→Ato IV). Selecione o marco atual, leia o **intro** e "o que ensina", clique **Enviar Herói** → **VITÓRIA** dá **XP** (count-up), **loot garantido** (toast) e **desbloqueia um sistema** — a aba correspondente **aparece na nav**. A **barra de XP** na top bar enche; ao encher, **sobe de nível** (toast "⬆ Nível"). Os primeiros atos vencem com o starter; **os finais (Geleira/Fenda) exigem melhorar a build** (res. a frio/caos) — é o desafio de progressão. Ordem de desbloqueio: Equipamento→prólogo, Árvore→Ato I, Masmorra→Ato II, Mercado→Ato III.
+**★ PROGRESSÃO (o novo — teste isto primeiro).** O jogo agora **abre na Campanha** (as demais abas nascem travadas) e **conduz o jogador**:
+- **Campanha (P1/P2):** a trilha tem 5 marcos (Prólogo→Ato IV). Selecione o marco atual, leia o **intro** e "o que ensina", clique **Enviar Herói** → **VITÓRIA** dá **XP** (count-up), **loot múltiplo** (1–3 itens + orbes, toasts resumindo) e **desbloqueia um sistema** — a aba aparece na nav. Barra de XP na top bar enche; ao encher, **sobe de nível** → aparece o **PAINEL DE LEVEL UP** dizendo o que ganhou (+pontos de talento, habilidades liberadas) e com botões "Ir para a Árvore/Habilidades". Ordem de desbloqueio: Equipamento→prólogo, Árvore→Ato I, Masmorra→Ato II, Mercado→Ato III.
+- **Pontos de talento (novo):** a Árvore agora gasta **pontos** que você ganha (1/nível + 2/marco). Há um **badge vermelho na nav** (Árvore) com quantos pontos há a gastar, e uma **dica** no topo da tela. O starter começa só na origem — conquiste os nós.
+- **Habilidades por nível (novo):** em Habilidades, skills avançadas aparecem **travadas com "Requer nível N"** até você subir. Suba de nível e elas liberam (avisado no painel de level up).
+- **Orbes caem das runs (novo):** a bancada de Crafting tem um **guia "como usar as orbes"**; e elas agora **dropam** das dungeons/marcos (não são mais só estoque inicial). Os primeiros atos vencem com o starter; os finais exigem **melhorar a build** com o loot/pontos ganhos.
 - **Afixo excepcional (só-dropa):** cada marco vencido dá loot; o **Ato IV sempre traz um afixo EXCEPCIONAL** (dourado, tag **EXC**/✦ no tooltip) — ~1,5× o normal e **não-craftável** (tente craftar: os orbes nunca o geram; o divino o preserva).
 - **Maestria de skill (SK1):** em **Habilidades**, cada skill da rotação mostra **★ Maestria N (+X%)**. Vença dungeons/marcos com a skill no loadout → ela **sobe de maestria** (toast) e o **DPS no boneco cresce**.
 - **Selo elemental (SK2):** em **Habilidades**, encaixe um **Selo** (Brasa/Gelo/Tempestade/Pestilento) numa skill física → o tipo muda (ex.: **fogo + queimadura**, marca "◈ selado"); no boneco, o **dano por tipo** vira elemental, ignora a **armadura** do alvo e passa a sofrer a **resistência** nova.
