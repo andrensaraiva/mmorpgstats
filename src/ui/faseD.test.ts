@@ -1,10 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { getBase, makeStarter } from '../game/content'
+import { getBase } from '../game/content'
 import type { ItemInstance } from '../game/types'
 import { applyInventoryFilter, emptyFilter } from './inventoryFilter'
 import { diffAffixes } from './craftDiff'
 
-const inventory = makeStarter().inventory
+/** Inventário de teste com raridades/afixos conhecidos (independe do starter). */
+const inventory: ItemInstance[] = [
+  {
+    uid: 't1', baseId: 'war_axe', rarity: 'rare', itemLevel: 60, corrupted: false, name: 'Machado Raro',
+    affixes: [
+      { groupId: 'inc_phys', kind: 'prefix', tier: 2, values: { incPhys: 50 }, text: '+50% dano físico aumentado' },
+      { groupId: 'fire_res', kind: 'suffix', tier: 2, values: { fireRes: 35 }, text: '+35% resistência a fogo' },
+    ],
+  },
+  {
+    uid: 't2', baseId: 'plate_chest', rarity: 'magic', itemLevel: 50, corrupted: false, name: 'Peitoral Mágico',
+    affixes: [{ groupId: 'flat_life', kind: 'prefix', tier: 3, values: { flatLife: 90 }, text: '+90 vida máxima' }],
+  },
+  {
+    uid: 't3', baseId: 'iron_ring', rarity: 'common', itemLevel: 20, corrupted: false, name: 'Anel Comum', affixes: [],
+  },
+  {
+    uid: 't4', baseId: 'amber_amulet', rarity: 'unique', itemLevel: 70, corrupted: false, name: 'Selo Único',
+    affixes: [{ groupId: 'unique', kind: 'prefix', tier: 0, values: { strength: 40 }, text: '+40 Força' }],
+  },
+]
 
 describe('applyInventoryFilter (ferramentas de inventário — Fase D)', () => {
   it('sem filtro devolve todos os itens, na ordem original', () => {

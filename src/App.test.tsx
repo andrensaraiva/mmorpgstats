@@ -95,8 +95,8 @@ describe('App (smoke)', () => {
     completeCampaign()
     const nav = screen.getByRole('navigation', { name: /Navegação principal/ })
     fireEvent.click(within(nav).getByRole('button', { name: /Equipamento/ }))
-    // "Elo Trincado" é o anel comum inicial — selecionável para craft.
-    fireEvent.click(screen.getAllByText('Elo Trincado')[0])
+    // "Anel de Cobre" é um item comum do baú inicial — selecionável para craft.
+    fireEvent.click(screen.getAllByText('Anel de Cobre')[0])
     const transBtn = screen.getByRole('button', { name: /Trans/ })
     expect(transBtn).not.toBeDisabled()
     fireEvent.click(transBtn)

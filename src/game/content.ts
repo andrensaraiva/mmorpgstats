@@ -109,6 +109,54 @@ export const NAV: NavItem[] = [
 /* ===================== BASES ===================== */
 
 export const ITEM_BASES: ItemBase[] = [
+  // ---- BASES INICIAIS (nível 1, fracas — o começo do zero) ----
+  {
+    id: 'rusty_hatchet',
+    name: 'Machadinha Enferrujada',
+    kind: 'weapon',
+    itemClass: 'weapon',
+    weaponType: 'axe',
+    icon: 'axe',
+    weapon: { physMin: 5, physMax: 9, attackSpeed: 1.3 },
+    requires: { level: 1 },
+    baseItemLevel: 1,
+  },
+  {
+    id: 'leather_cap',
+    name: 'Coifa de Couro',
+    kind: 'head',
+    itemClass: 'armour',
+    defences: { armour: 20, evasion: 12 },
+    requires: { level: 1 },
+    baseItemLevel: 1,
+  },
+  {
+    id: 'padded_vest',
+    name: 'Gibão Acolchoado',
+    kind: 'chest',
+    itemClass: 'armour',
+    defences: { armour: 45, evasion: 20 },
+    requires: { level: 1 },
+    baseItemLevel: 1,
+  },
+  {
+    id: 'cloth_wraps',
+    name: 'Faixas de Pano',
+    kind: 'gloves',
+    itemClass: 'armour',
+    defences: { armour: 12, evasion: 8 },
+    requires: { level: 1 },
+    baseItemLevel: 1,
+  },
+  {
+    id: 'worn_boots',
+    name: 'Botas Gastas',
+    kind: 'boots',
+    itemClass: 'armour',
+    defences: { armour: 14, evasion: 10 },
+    requires: { level: 1 },
+    baseItemLevel: 1,
+  },
   {
     id: 'war_axe',
     name: 'Machado de Guerra',
@@ -1054,34 +1102,34 @@ export const CAMPAIGN: CampaignNode[] = [
     outcome:
       'O último carniçal tomba. Você sente o peso da arma na mão — e como cada afixo dela muda o golpe. Seu equipamento está liberado.',
     teaches: 'Golpe e DPS: a arma e os afixos definem seu dano.',
-    dungeonId: 'd-crypt', levelReq: 1, unlocks: 'equipamento',
+    dungeonId: 'd-crypt', levelReq: 1, unlocks: ['equipamento'],
   },
   {
     id: 'c-act1', act: 1, order: 1, title: 'Ato I — A Cripta',
     intro:
       'Mais fundo, a Cripta respira fogo pelas frestas. Sem resistência, a horda ígnea vai cozinhá-la viva. Ajuste a build — e talvez a árvore de talentos ajude.',
     outcome:
-      'Você aguentou as labaredas e limpou a horda. A Árvore Passiva e os primeiros orbes de crafting se abrem: agora dá para esculpir o arquétipo.',
-    teaches: 'Resistência a fogo + horda (AoE). Abre a árvore e o crafting.',
-    dungeonId: 'd-crypt', levelReq: 8, unlocks: 'arvore',
+      'Você aguentou as labaredas e limpou a horda. A Árvore Passiva e a Masmorra livre se abrem: agora dá para esculpir o arquétipo e farmar poder onde quiser.',
+    teaches: 'Resistência a fogo + horda (AoE). Abre a árvore e a Masmorra livre.',
+    dungeonId: 'd-crypt', levelReq: 5, unlocks: ['arvore', 'masmorra'],
   },
   {
     id: 'c-act2', act: 2, order: 2, title: 'Ato II — A Fornalha',
     intro:
       'Na Fornalha Rachada, poucos inimigos — porém enormes. Golpe grande fura armadura fina. Escolha bem as habilidades da sua arma antes de descer.',
     outcome:
-      'Os brutos caíram. A Masmorra assíncrona plena se abre: agora dá para enviar o herói a qualquer destino e ler o relatório causal — o campo de provas da build.',
-    teaches: 'Poucos-fortes + mitigação de golpe grande. Abre a Masmorra livre.',
-    dungeonId: 'd-forge', levelReq: 18, unlocks: 'masmorra',
+      'Os brutos caíram. Correu a notícia: o Mercado dos Estrategistas agora negocia com você — comprar a peça certa é parte da build.',
+    teaches: 'Poucos-fortes + mitigação de golpe grande. Abre o Mercado.',
+    dungeonId: 'd-forge', levelReq: 14, unlocks: ['mercado'],
   },
   {
     id: 'c-act3', act: 3, order: 3, title: 'Ato III — A Geleira',
     intro:
       'O Sepulcro Glacial congela o tempo: o frio impõe controle e há inimigos que atacam do alto. Sua rotação e seu EHP serão testados de verdade.',
     outcome:
-      'Você quebrou o gelo e a horda aérea. Correu a notícia: o Mercado dos Estrategistas agora negocia com você — comprar a peça certa é parte da build.',
-    teaches: 'Frio/controle + voadores. Abre o Mercado.',
-    dungeonId: 'd-glacier', levelReq: 30, unlocks: 'mercado',
+      'Você quebrou o gelo e a horda aérea. Com todos os sistemas em mãos, só falta o abismo — a Fenda das Cinzas aguarda quem tiver build para tanto.',
+    teaches: 'Frio/controle + voadores. O último teste antes do abismo.',
+    dungeonId: 'd-glacier', levelReq: 22,
   },
   {
     id: 'c-act4', act: 4, order: 4, title: 'Ato IV — A Fenda',
@@ -1090,7 +1138,7 @@ export const CAMPAIGN: CampaignNode[] = [
     outcome:
       'A Fenda se fecha atrás de você. A campanha terminou; o endgame (o Atlas das Fendas) o aguarda — mas isso é outra jornada.',
     teaches: 'Caos (fura ES) + chefe multi-fase. Conclui a campanha.',
-    dungeonId: 'd-abyss', levelReq: 42,
+    dungeonId: 'd-abyss', levelReq: 30,
   },
 ]
 
@@ -1173,75 +1221,41 @@ export interface StarterState {
 }
 
 export function makeStarter(): StarterState {
-  const weapon = inst('war_axe', 'rare', 'Britadora do Fosso', 74, [
-    aff('added_phys', 'prefix', 3, { addedPhysMin: 15, addedPhysMax: 30 }, 'Adiciona 15–30 dano físico'),
-    aff('inc_phys', 'prefix', 2, { incPhys: 58 }, '+58% dano físico aumentado'),
-    aff('attack_speed', 'suffix', 4, { incAttackSpeed: 7 }, '+7% velocidade de ataque'),
-    aff('crit_multi', 'suffix', 4, { critMulti: 18 }, '+18% multiplicador de crítico'),
-  ], { quality: 20 })
-  const head = inst('plate_helm', 'magic', 'Elmo do Vigia', 66, [
-    aff('flat_life', 'prefix', 3, { flatLife: 96 }, '+96 vida máxima'),
-    aff('cold_res', 'suffix', 4, { coldRes: 21 }, '+21% resistência a frio'),
-  ])
-  const gloves = inst('plate_gloves', 'magic', 'Manoplas Rachadas', 60, [
-    aff('inc_armour', 'prefix', 4, { armour: 62 }, '+62 armadura'),
-    aff('strength', 'suffix', 4, { strength: 16 }, '+16 Força'),
-  ])
-  const chest = inst('plate_chest', 'rare', 'Couraça das Cinzas', 72, [
-    aff('flat_life', 'prefix', 1, { flatLife: 172 }, '+172 vida máxima'),
-    aff('inc_armour', 'prefix', 2, { armour: 148 }, '+148 armadura'),
-    aff('lit_res', 'suffix', 2, { litRes: 34 }, '+34% resistência a raio'),
-    aff('fire_res', 'suffix', 4, { fireRes: 14 }, '+14% resistência a fogo'),
-  ])
-  const amulet = inst('amber_amulet', 'rare', 'Selo do Juramento', 70, [
-    aff('strength', 'suffix', 2, { strength: 38 }, '+38 Força'),
-    aff('lit_res', 'suffix', 2, { litRes: 28 }, '+28% resistência a raio'),
-  ])
-  const boots = inst('mail_greaves', 'rare', 'Passos de Brasa', 68, [
-    aff('flat_life', 'prefix', 3, { flatLife: 118 }, '+118 vida máxima'),
-    aff('cold_res', 'suffix', 2, { coldRes: 30 }, '+30% resistência a frio'),
-    aff('fire_res', 'suffix', 4, { fireRes: 11 }, '+11% resistência a fogo'),
-  ])
-  const ring1 = inst('iron_ring', 'magic', 'Aro de Ferro-Vivo', 62, [
-    aff('flat_life', 'prefix', 5, { flatLife: 44 }, '+44 vida máxima'),
-    aff('cold_res', 'suffix', 4, { coldRes: 22 }, '+22% resistência a frio'),
-  ])
-  const ring2 = inst('copper_ring', 'common', 'Elo Trincado', 40, [])
+  // Começar DO ZERO (nível 1): kit inicial pobre — uma arma comum básica e
+  // peças de armadura simples, sem resistências. O poder vem da jornada.
+  const weapon = inst('rusty_hatchet', 'common', 'Machadinha Enferrujada', 1, [])
+  const head = inst('leather_cap', 'common', 'Coifa de Couro', 1, [])
+  const chest = inst('padded_vest', 'common', 'Gibão Acolchoado', 1, [])
+  const gloves = inst('cloth_wraps', 'common', 'Faixas de Pano', 1, [])
+  const boots = inst('worn_boots', 'common', 'Botas Gastas', 1, [])
+  const ring1 = inst('iron_ring', 'common', 'Anel de Ferro', 1, [])
 
-  // No baú: o anel que resolve a derrota por fogo + material para craftar.
-  const flameguard = makeUnique('u_flameguard')
-  const rawChest = inst('plate_chest', 'common', 'Peitoral de Placas', 60, [])
-  const magicDagger = inst('cinder_dagger', 'magic', 'Adaga Afiada', 58, [
-    aff('inc_phys', 'prefix', 4, { incPhys: 28 }, '+28% dano físico aumentado'),
-    aff('crit_chance', 'suffix', 4, { critChance: 11 }, '+11% chance de crítico'),
-  ])
+  // No baú: só um par de sobras comuns para o primeiro craft.
+  const spareRing = inst('copper_ring', 'common', 'Anel de Cobre', 1, [])
+  const spareAmulet = inst('amber_amulet', 'common', 'Amuleto de Âmbar', 1, [])
 
   return {
     equipped: {
       weapon: weapon.uid,
       head: head.uid,
-      gloves: gloves.uid,
       chest: chest.uid,
-      amulet: amulet.uid,
+      gloves: gloves.uid,
       boots: boots.uid,
       ring1: ring1.uid,
-      ring2: ring2.uid,
     },
-    inventory: [
-      weapon, head, gloves, chest, amulet, boots, ring1, ring2,
-      flameguard, rawChest, magicDagger,
-    ],
+    inventory: [weapon, head, chest, gloves, boots, ring1, spareRing, spareAmulet],
   }
 }
 
 export const STARTER_CURRENCY = {
-  transmutation: 24,
-  alteration: 40,
-  regal: 8,
-  exalt: 5,
-  chaos: 12,
-  divine: 3,
-  vaal: 4,
+  // Começa com pouco — as orbes caem das runs (progressão real).
+  transmutation: 3,
+  alteration: 4,
+  regal: 1,
+  exalt: 0,
+  chaos: 1,
+  divine: 0,
+  vaal: 0,
 }
 
 /* ===================== MUNDO VIVO (Portal) ===================== */

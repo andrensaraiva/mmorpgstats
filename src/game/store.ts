@@ -467,9 +467,11 @@ function reducer(state: GameState, action: Action): GameState {
       const completedNodes = [...state.completedNodes, action.nodeId]
       let unlockedSystems = state.unlockedSystems
       let toasts = state.toasts
-      if (node?.unlocks && !unlockedSystems.includes(node.unlocks)) {
-        unlockedSystems = [...unlockedSystems, node.unlocks]
-        toasts = withToast(toasts, 'loot', `✦ Sistema liberado: ${SYSTEM_LABEL[node.unlocks]}`)
+      for (const sys of node?.unlocks ?? []) {
+        if (!unlockedSystems.includes(sys)) {
+          unlockedSystems = [...unlockedSystems, sys]
+          toasts = withToast(toasts, 'loot', `✦ Sistema liberado: ${SYSTEM_LABEL[sys]}`)
+        }
       }
       return { ...state, completedNodes, unlockedSystems, toasts }
     }

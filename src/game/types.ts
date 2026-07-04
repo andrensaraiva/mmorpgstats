@@ -49,8 +49,8 @@ export interface CampaignNode {
   dungeonId: string
   /** Nível mínimo sugerido para o encontro. */
   levelReq: number
-  /** Sistema destravado ao concluir (opcional). */
-  unlocks?: SystemId
+  /** Sistema(s) destravado(s) ao concluir. */
+  unlocks?: SystemId[]
 }
 
 /* ---------- raridade e slots ---------- */

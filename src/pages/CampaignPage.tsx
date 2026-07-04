@@ -158,7 +158,7 @@ function CampaignEncounter({
     if (run.survivable) {
       game.completeCampaignNode(node.id)
       const rng = makeRng((node.order + 1) * 2654435761 + Math.floor(Date.now() / 1000))
-      const isFinale = !node.unlocks
+      const isFinale = !node.unlocks?.length
       const withExceptional = isFinale || rng() < 0.15 + node.order * 0.1
       const loot = rollLoot(node.levelReq, true, rng, { luck: 0.3 + node.order * 0.15, withExceptional })
       game.dispatch({ type: 'applyLoot', loot })
@@ -198,7 +198,7 @@ function CampaignEncounter({
           <div className="camp-meta tiny muted mt6">
             Tempo estimado: <b className={outcome.survivable ? 'teal' : 'blood'}>{fmtTime(outcome.seconds)}</b>
             {outcome.survivable ? '' : <b className="blood"> · morte provável — {outcome.cause}</b>}
-            {node.unlocks ? <> · Recompensa: <b className="gold-text">destrava um sistema</b></> : null}
+            {node.unlocks?.length ? <> · Recompensa: <b className="gold-text">destrava sistema(s)</b></> : null}
           </div>
           {underLevelled && !alreadyDone ? (
             <div className="tiny blood mt6">

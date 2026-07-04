@@ -286,8 +286,7 @@ describe('crafting (orbes / corrupção)', () => {
   })
 
   it('não muta o item de entrada', () => {
-    const starter = makeStarter()
-    const rare = starter.inventory.find((i) => i.rarity === 'rare')!
+    const rare = makeRewardItem('plate_chest', 'rare', 'Alvo', 60, makeRng(1))
     const before = JSON.stringify(rare)
     craft('divine', rare, rng)
     expect(JSON.stringify(rare)).toBe(before)
@@ -699,12 +698,13 @@ describe('S — item rico (qualidade, requisitos) e skills por arma', () => {
   const skillById = (id: string) => SKILLS.find((s) => s.id === id) as SkillDefinition
 
   it('qualidade amplia o dano físico da arma (mais DPS)', () => {
-    const { equipped } = starterEquipped()
-    // A arma do starter (war_axe) tem quality 20; zerar deve baixar o DPS.
-    const wpnIdx = equipped.findIndex((i) => i.baseId === 'war_axe')
-    const noQ = equipped.map((i, k) => (k === wpnIdx ? { ...i, quality: 0 } : i))
-    const withQ = aggregate({ equipped, allocated: ['s0'], sockets: {} })
-    const without = aggregate({ equipped: noQ, allocated: ['s0'], sockets: {} })
+    const axe0: ItemInstance = {
+      uid: 'q-w0', baseId: 'war_axe', rarity: 'rare', itemLevel: 60, corrupted: false, name: 'Machado', quality: 0,
+      affixes: [{ groupId: 'inc_phys', kind: 'prefix', tier: 2, values: { incPhys: 40 }, text: '+40% dano físico aumentado' }],
+    }
+    const axe20: ItemInstance = { ...axe0, uid: 'q-w20', quality: 20 }
+    const withQ = aggregate({ equipped: [axe20], allocated: ['s0'], sockets: {} })
+    const without = aggregate({ equipped: [axe0], allocated: ['s0'], sockets: {} })
     expect(withQ.dps).toBeGreaterThan(without.dps)
   })
 
