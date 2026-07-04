@@ -1,4 +1,4 @@
-import { META, NAV, classById } from './game/content'
+import { CAMPAIGN, META, NAV, classById } from './game/content'
 import { useSession } from './game/session'
 import { useGame } from './game/store'
 import type { ViewId } from './game/types'
@@ -67,7 +67,7 @@ function GameShell({ session }: { session: ReturnType<typeof useSession> }) {
     if (id === 'arvore' && game.talent.available > 0) return String(game.talent.available)
     if (id === 'campanha') {
       const done = game.state.completedNodes.length
-      return done < 5 ? '!' : null // ainda há marcos a jogar
+      return done < CAMPAIGN.length ? '!' : null // ainda há marcos a jogar
     }
     return null
   }

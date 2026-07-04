@@ -117,7 +117,8 @@ describe('aggregate (modelo de poder)', () => {
 
 describe('dungeonOutcome', () => {
   it('mais DPS reduz o tempo estimado', () => {
-    const dungeon = DUNGEONS[0]
+    // Usa uma dungeon de dificuldade alta (senão ambos atingem o piso de tempo).
+    const dungeon = DUNGEONS.reduce((a, b) => (b.diff > a.diff ? b : a))
     const slow = dungeonOutcome(dungeon, { ...basePower(), dps: 200 })
     const fast = dungeonOutcome(dungeon, { ...basePower(), dps: 800 })
     expect(fast.seconds).toBeLessThan(slow.seconds)

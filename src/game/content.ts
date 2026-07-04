@@ -305,6 +305,36 @@ export const ITEM_BASES: ItemBase[] = [
     implicitText: '+6% a todas as resistências elementais',
     baseItemLevel: 20,
   },
+
+  // ==================== EXPANSÃO DE BASES (por tipo de arma + tiers) ====================
+  // -- Maça (força, golpe pesado) --
+  { id: 'iron_mace', name: 'Maça de Ferro', kind: 'weapon', itemClass: 'weapon', weaponType: 'mace', weapon: { physMin: 12, physMax: 20, attackSpeed: 1.05 }, requires: { level: 6, str: 20 }, implicit: { critMulti: 15 }, implicitText: '+15% multiplicador de crítico', baseItemLevel: 8 },
+  { id: 'war_hammer', name: 'Martelo de Guerra', kind: 'weapon', itemClass: 'weapon', weaponType: 'mace', weapon: { physMin: 34, physMax: 60, attackSpeed: 0.95 }, requires: { level: 28, str: 80 }, implicit: { critMulti: 25 }, implicitText: '+25% multiplicador de crítico', baseItemLevel: 40 },
+  // -- Espada (equilíbrio) --
+  { id: 'short_sword', name: 'Espada Curta', kind: 'weapon', itemClass: 'weapon', weaponType: 'sword', weapon: { physMin: 9, physMax: 16, attackSpeed: 1.35 }, requires: { level: 5, str: 12, dex: 12 }, implicit: { critChance: 5 }, implicitText: '+5% chance de crítico', baseItemLevel: 6 },
+  { id: 'estoc', name: 'Estoque', kind: 'weapon', itemClass: 'weapon', weaponType: 'sword', weapon: { physMin: 24, physMax: 44, attackSpeed: 1.2 }, requires: { level: 24, str: 40, dex: 60 }, implicit: { critChance: 7, critMulti: 12 }, implicitText: '+7% crítico, +12% multi', baseItemLevel: 36 },
+  // -- Adaga (rápida, crítico) --
+  { id: 'shiv', name: 'Punhal Rústico', kind: 'weapon', itemClass: 'weapon', weaponType: 'dagger', weapon: { physMin: 5, physMax: 12, attackSpeed: 1.55 }, requires: { level: 4, dex: 18 }, implicit: { critChance: 9 }, implicitText: '+9% chance de crítico', baseItemLevel: 4 },
+  // -- Arco (destreza, à distância) --
+  { id: 'short_bow', name: 'Arco Curto', kind: 'weapon', itemClass: 'weapon', weaponType: 'bow', weapon: { physMin: 8, physMax: 18, attackSpeed: 1.3 }, requires: { level: 6, dex: 24 }, implicit: { incAttackSpeed: 5 }, implicitText: '+5% velocidade de ataque', baseItemLevel: 8 },
+  { id: 'war_bow', name: 'Arco de Guerra', kind: 'weapon', itemClass: 'weapon', weaponType: 'bow', weapon: { physMin: 26, physMax: 50, attackSpeed: 1.25 }, requires: { level: 26, dex: 90 }, implicit: { incAttackSpeed: 8 }, implicitText: '+8% velocidade de ataque', baseItemLevel: 38 },
+  // -- Cajado (inteligência, magia) --
+  { id: 'gnarled_staff', name: 'Cajado Retorcido', kind: 'weapon', itemClass: 'weapon', weaponType: 'staff', weapon: { physMin: 6, physMax: 11, attackSpeed: 1.1 }, requires: { level: 6, int: 24 }, implicit: { incElemental: 12 }, implicitText: '+12% dano elemental', baseItemLevel: 8 },
+  { id: 'runed_staff', name: 'Cajado Rúnico', kind: 'weapon', itemClass: 'weapon', weaponType: 'staff', weapon: { physMin: 14, physMax: 24, attackSpeed: 1.1 }, requires: { level: 26, int: 90 }, implicit: { incElemental: 28 }, implicitText: '+28% dano elemental', baseItemLevel: 40 },
+  // -- Varinha (inteligência, veloz) --
+  { id: 'bone_wand', name: 'Varinha de Osso', kind: 'weapon', itemClass: 'weapon', weaponType: 'wand', weapon: { physMin: 5, physMax: 9, attackSpeed: 1.4 }, requires: { level: 5, int: 20 }, implicit: { incElemental: 10 }, implicitText: '+10% dano elemental', baseItemLevel: 6 },
+
+  // -- Armaduras intermediárias (preenchem o meio da progressão) --
+  { id: 'ring_mail', name: 'Cota de Anéis', kind: 'chest', itemClass: 'armour', defences: { armour: 120 }, requires: { level: 18, str: 40 }, baseItemLevel: 22 },
+  { id: 'scale_helm', name: 'Elmo de Escamas', kind: 'head', itemClass: 'armour', defences: { armour: 60 }, requires: { level: 16, str: 30 }, baseItemLevel: 20 },
+  { id: 'leather_gloves', name: 'Luvas de Couro', kind: 'gloves', itemClass: 'armour', defences: { armour: 30, evasion: 24 }, requires: { level: 12, dex: 24 }, baseItemLevel: 14 },
+  { id: 'traveler_boots', name: 'Botas do Viajante', kind: 'boots', itemClass: 'armour', defences: { armour: 34, evasion: 28 }, requires: { level: 12 }, implicit: { moveSpeed: 5 }, implicitText: '+5% velocidade de movimento', baseItemLevel: 14 },
+  { id: 'buckler', name: 'Broquel', kind: 'offhand', itemClass: 'armour', implicit: { block: 15, armour: 40 }, implicitText: '+15% bloqueio, +40 armadura', requires: { level: 10 }, baseItemLevel: 12 },
+
+  // -- Joalheria intermediária --
+  { id: 'jade_amulet', name: 'Amuleto de Jade', kind: 'amulet', itemClass: 'jewellery', implicit: { dexterity: 20 }, implicitText: '+20 Destreza', baseItemLevel: 24 },
+  { id: 'lapis_amulet', name: 'Amuleto de Lápis', kind: 'amulet', itemClass: 'jewellery', implicit: { intelligence: 20 }, implicitText: '+20 Inteligência', baseItemLevel: 24 },
+  { id: 'gold_ring', name: 'Anel de Ouro', kind: 'ring', itemClass: 'jewellery', implicit: { flatMana: 20 }, implicitText: '+20 mana máxima', baseItemLevel: 28 },
 ]
 
 const baseIndex: Record<string, ItemBase> = Object.fromEntries(
@@ -634,6 +664,37 @@ export const AFFIX_GROUPS: AffixGroup[] = [
     classes: ['armour'],
     tiers: [
       { tier: 3, ranges: { block: [3, 6] }, text: '+{block}% chance de bloqueio', minItemLevel: 1 },
+    ],
+  },
+  // ---- EXPANSÃO: famílias adicionais ----
+  {
+    id: 'inc_crit_chance_jewel',
+    name: 'Chance de Crítico (jóia)',
+    kind: 'suffix',
+    classes: ['jewellery'],
+    tiers: [
+      { tier: 3, ranges: { critChance: [4, 7] }, text: '+{critChance}% chance de crítico', minItemLevel: 1 },
+      { tier: 1, ranges: { critChance: [9, 14] }, text: '+{critChance}% chance de crítico', minItemLevel: 40 },
+    ],
+  },
+  {
+    id: 'flat_phys_jewel',
+    name: 'Dano Físico (jóia)',
+    kind: 'prefix',
+    classes: ['jewellery'],
+    tiers: [
+      { tier: 3, ranges: { addedPhysMin: [2, 4], addedPhysMax: [6, 10] }, text: 'Adiciona {addedPhysMin}–{addedPhysMax} dano físico aos ataques', minItemLevel: 1 },
+      { tier: 1, ranges: { addedPhysMin: [6, 10], addedPhysMax: [14, 22] }, text: 'Adiciona {addedPhysMin}–{addedPhysMax} dano físico aos ataques', minItemLevel: 44 },
+    ],
+  },
+  {
+    id: 'chaos_res',
+    name: 'Resistência a Caos',
+    kind: 'suffix',
+    classes: ['armour', 'jewellery'],
+    tiers: [
+      { tier: 3, ranges: { chaosRes: [8, 14] }, text: '+{chaosRes}% resistência a caos', minItemLevel: 20 },
+      { tier: 1, ranges: { chaosRes: [18, 26] }, text: '+{chaosRes}% resistência a caos', minItemLevel: 55 },
     ],
   },
 ]
@@ -1020,11 +1081,73 @@ export const BESTIARY: Monster[] = [
       { damage: { cold: 240, chaos: 160 }, note: 'Fase 2 — frio + caos: chill trava enquanto o caos derrete.' },
     ],
   },
+  // ==================== EXPANSÃO DO BESTIÁRIO ====================
+  // -- Faixa inicial (nível 1–10): inimigos fracos p/ o começo do zero --
+  { id: 'm-rat', name: 'Rato do Esgoto', role: 'swarmer', rank: 'normal', damage: { phys: 8 }, hitSize: 'small', life: 30, weakTo: ['fire'] },
+  { id: 'm-skeleton', name: 'Esqueleto Rachado', role: 'bruiser', rank: 'normal', damage: { phys: 22 }, hitSize: 'medium', life: 120 },
+  { id: 'm-slime', name: 'Limo Ácido', role: 'swarmer', rank: 'normal', damage: { chaos: 14 }, hitSize: 'small', life: 60, resistant: ['phys'] },
+  { id: 'm-bandit', name: 'Bandido Esfarrapado', role: 'ranged', rank: 'normal', damage: { phys: 30 }, hitSize: 'medium', life: 150, weakTo: ['lightning'] },
+  { id: 'm-wisp', name: 'Fogo-Fátuo', role: 'caster', rank: 'normal', damage: { fire: 26 }, hitSize: 'small', life: 90, weakTo: ['cold'] },
+  // -- Faixa média (nível 10–24) --
+  { id: 'm-hound', name: 'Cão Infernal', role: 'swarmer', rank: 'normal', damage: { fire: 70 }, hitSize: 'small', life: 260, weakTo: ['cold'] },
+  { id: 'm-golem', name: 'Golem de Pedra', role: 'bruiser', rank: 'normal', damage: { phys: 150 }, hitSize: 'huge', life: 1100, resistant: ['phys'] },
+  { id: 'm-harpy', name: 'Harpia Rasante', role: 'aerial', rank: 'normal', damage: { phys: 90 }, hitSize: 'medium', life: 380, aerial: true, weakTo: ['lightning'] },
+  { id: 'm-viper', name: 'Víbora Pestilenta', role: 'ranged', rank: 'normal', damage: { chaos: 110 }, hitSize: 'small', life: 320, resistant: ['chaos'] },
+  // -- Elites (contrajogo variado) --
+  { id: 'e-frost-lich', name: 'Lich do Gelo', role: 'caster', rank: 'elite', damage: { cold: 300 }, hitSize: 'huge', life: 3000, resistant: ['cold'],
+    affixes: [
+      { id: 'af-chill', name: 'Aura Gélida', effect: 'Congela ao redor; sem redução de CC, trava o herói.', addsDamageType: 'cold' },
+      { id: 'af-summon', name: 'Necromante', effect: 'Ergue esqueletos; premia AoE.' },
+    ] },
+  { id: 'e-plague-bearer', name: 'Portador da Praga', role: 'support', rank: 'elite', damage: { chaos: 240 }, hitSize: 'medium', life: 2800, resistant: ['chaos'],
+    affixes: [
+      { id: 'af-poison-cloud', name: 'Nuvem Tóxica', effect: 'Veneno que fura o ES; exige res. a caos ou vida.', addsDamageType: 'chaos' },
+    ] },
+  // -- Chefe intermediário --
+  { id: 'b-forge-tyrant', name: 'Tirano da Fornalha', role: 'bruiser', rank: 'boss', damage: { phys: 220, fire: 180 }, hitSize: 'huge', life: 16000, resistant: ['fire'],
+    phases: [
+      { damage: { phys: 220 }, note: 'Fase 1 — martelo físico: testa armadura/EHP.' },
+      { damage: { fire: 300 }, note: 'Fase 2 — sopro de fogo: testa res. a fogo.' },
+    ] },
 ]
 
 /* ===================== DUNGEONS ===================== */
 
 export const DUNGEONS: Dungeon[] = [
+  // ---- Encontros iniciais (o começo do zero) ----
+  {
+    id: 'd-sewers', name: 'Esgotos Rasos', biome: 'Subúrbio Alagado', lvl: 3, diff: 220, fireThreat: false, fireReq: 0,
+    mods: ['Enxame fraco', 'Sem ameaça elemental'],
+    desc: 'Ratos e limos no primeiro corredor abaixo da cidade — o batismo da lâmina.',
+    composition: {
+      density: 'swarm', forceProfile: 'weak-horde', damageMix: ['phys'],
+      hasAerial: false, mobilityDemand: 'low', roles: ['swarmer'],
+      waves: [{ monsterId: 'm-rat', count: 12 }, { monsterId: 'm-slime', count: 4 }, { monsterId: 'm-skeleton', count: 2 }],
+    },
+    reward: { baseId: 'short_sword', rarity: 'magic', name: 'Lâmina do Novato' },
+  },
+  {
+    id: 'd-hollow', name: 'Bosque Oco', biome: 'Floresta Morta', lvl: 10, diff: 700, fireThreat: true, fireReq: 15,
+    mods: ['Bandidos + fogo-fátuo', 'Res. a fogo recomendada'],
+    desc: 'Bandidos e fogos-fátuos entre as árvores mortas; a primeira lição de resistência.',
+    composition: {
+      density: 'medium', forceProfile: 'mixed', damageMix: ['phys', 'fire'],
+      hasAerial: false, mobilityDemand: 'medium', roles: ['ranged', 'caster', 'swarmer'],
+      waves: [{ monsterId: 'm-bandit', count: 6 }, { monsterId: 'm-wisp', count: 4 }, { monsterId: 'm-hound', count: 3 }],
+    },
+    reward: { baseId: 'ring_mail', rarity: 'rare', name: 'Cota do Caçador' },
+  },
+  {
+    id: 'd-quarry', name: 'Pedreira Quebrada', biome: 'Mina a Céu Aberto', lvl: 20, diff: 1600, fireThreat: false, fireReq: 0,
+    mods: ['Golems + harpias', 'Voadores', 'Golpe grande'],
+    desc: 'Golems de pedra e harpias rasantes; testa golpe grande, dano-no-ar e o tirano ao fim.',
+    composition: {
+      density: 'sparse', forceProfile: 'few-strong', damageMix: ['phys'],
+      hasAerial: true, mobilityDemand: 'high', roles: ['bruiser', 'aerial'],
+      waves: [{ monsterId: 'm-golem', count: 4 }, { monsterId: 'm-harpy', count: 5 }, { monsterId: 'b-forge-tyrant', count: 1 }],
+    },
+    reward: { baseId: 'war_hammer', rarity: 'rare', name: 'Britadeira da Mina' },
+  },
   {
     id: 'd-crypt', name: 'Cripta dos Suspiros', biome: 'Necrópole', lvl: 44, diff: 4200, fireThreat: true, fireReq: 45,
     mods: ['Grupos numerosos', 'Dano físico elevado', 'Chefe ígneo (fase 2)'],
@@ -1096,45 +1219,63 @@ export const DUNGEONS: Dungeon[] = [
 
 export const CAMPAIGN: CampaignNode[] = [
   {
-    id: 'c-prologue', act: 0, order: 0, title: 'Prólogo — O Golpe',
+    id: 'c-prologue', act: 0, order: 0, title: 'Prólogo — Os Esgotos',
     intro:
-      'As Cinzas engoliram a estrada. Antes de qualquer feitiçaria, prove que sua lâmina morde: um pacote de carniçais bloqueia a descida à Cripta.',
+      'Você acorda sem nome nas galerias sob a cidade em Cinzas. Ratos e limos bloqueiam a única saída. Prove que a lâmina enferrujada ainda morde.',
     outcome:
-      'O último carniçal tomba. Você sente o peso da arma na mão — e como cada afixo dela muda o golpe. Seu equipamento está liberado.',
-    teaches: 'Golpe e DPS: a arma e os afixos definem seu dano.',
-    dungeonId: 'd-crypt', levelReq: 1, unlocks: ['equipamento'],
+      'O último rato guincha e cai. Nas mãos, o peso da arma — e a noção de que cada peça de equipamento muda o golpe. Seu inventário está liberado.',
+    teaches: 'Golpe e DPS: a arma define seu dano. Abre o Equipamento.',
+    dungeonId: 'd-sewers', levelReq: 1, unlocks: ['equipamento'],
   },
   {
-    id: 'c-act1', act: 1, order: 1, title: 'Ato I — A Cripta',
+    id: 'c-act1', act: 1, order: 1, title: 'Ato I — O Bosque Oco',
     intro:
-      'Mais fundo, a Cripta respira fogo pelas frestas. Sem resistência, a horda ígnea vai cozinhá-la viva. Ajuste a build — e talvez a árvore de talentos ajude.',
+      'À superfície, um bosque morto guarda bandidos e fogos-fátuos. O fogo queima quem não tem resistência. Monte a build — a árvore de talentos e o campo de provas vão ajudar.',
     outcome:
-      'Você aguentou as labaredas e limpou a horda. A Árvore Passiva e a Masmorra livre se abrem: agora dá para esculpir o arquétipo e farmar poder onde quiser.',
-    teaches: 'Resistência a fogo + horda (AoE). Abre a árvore e a Masmorra livre.',
-    dungeonId: 'd-crypt', levelReq: 5, unlocks: ['arvore', 'masmorra'],
+      'Você atravessou as chamas fátuas. A Árvore Passiva e a Masmorra livre se abrem: esculpa o arquétipo e farme poder onde quiser.',
+    teaches: 'Resistência a fogo + grupos mistos. Abre a Árvore e a Masmorra livre.',
+    dungeonId: 'd-hollow', levelReq: 5, unlocks: ['arvore', 'masmorra'],
   },
   {
-    id: 'c-act2', act: 2, order: 2, title: 'Ato II — A Fornalha',
+    id: 'c-act2', act: 2, order: 2, title: 'Ato II — A Pedreira',
     intro:
-      'Na Fornalha Rachada, poucos inimigos — porém enormes. Golpe grande fura armadura fina. Escolha bem as habilidades da sua arma antes de descer.',
+      'Na pedreira, golems de pedra andam devagar mas batem como avalanches, e harpias rasam do alto. Golpe grande fura armadura fina; escolha bem as habilidades.',
     outcome:
-      'Os brutos caíram. Correu a notícia: o Mercado dos Estrategistas agora negocia com você — comprar a peça certa é parte da build.',
-    teaches: 'Poucos-fortes + mitigação de golpe grande. Abre o Mercado.',
-    dungeonId: 'd-forge', levelReq: 14, unlocks: ['mercado'],
+      'O Tirano da Fornalha desmorona. Correu a notícia: o Mercado dos Estrategistas agora negocia com você — comprar a peça certa é parte da build.',
+    teaches: 'Poucos-fortes + voadores + golpe grande. Abre o Mercado.',
+    dungeonId: 'd-quarry', levelReq: 12, unlocks: ['mercado'],
   },
   {
-    id: 'c-act3', act: 3, order: 3, title: 'Ato III — A Geleira',
+    id: 'c-act3', act: 3, order: 3, title: 'Ato III — A Cripta',
     intro:
-      'O Sepulcro Glacial congela o tempo: o frio impõe controle e há inimigos que atacam do alto. Sua rotação e seu EHP serão testados de verdade.',
+      'A necrópole exala mortos-vivos em bando e o Carrasco Ígneo incendeia a arena na fase final. Horda densa exige vazão; o fogo exige resistência.',
     outcome:
-      'Você quebrou o gelo e a horda aérea. Com todos os sistemas em mãos, só falta o abismo — a Fenda das Cinzas aguarda quem tiver build para tanto.',
+      'O Carrasco cai em cinzas. Você domina a horda e o fogo — a jornada endurece a partir daqui.',
+    teaches: 'Horda densa (AoE) + chefe multi-fase de fogo.',
+    dungeonId: 'd-crypt', levelReq: 18,
+  },
+  {
+    id: 'c-act4', act: 4, order: 4, title: 'Ato IV — A Fornalha',
+    intro:
+      'Rios de lava e sentinelas de brasa. Poucos, porém fortes: pune quem entra com pouca resistência a fogo. O elite fire-enchanted explode ao morrer.',
+    outcome:
+      'A Fornalha se apaga. Sua build sobreviveu ao calor máximo do mundo — quase.',
+    teaches: 'Fogo intenso + elite perigoso. Testa res. a fogo ao limite.',
+    dungeonId: 'd-forge', levelReq: 22,
+  },
+  {
+    id: 'c-act5', act: 5, order: 5, title: 'Ato V — A Geleira',
+    intro:
+      'O Sepulcro Glacial congela o tempo: o frio impõe controle e há voadores. Sem redução de CC nem EHP, o gelo trava e mata. Sua rotação será testada de verdade.',
+    outcome:
+      'Você quebrou o gelo e a horda aérea. Só falta o abismo — a Fenda das Cinzas aguarda quem tiver build para tanto.',
     teaches: 'Frio/controle + voadores. O último teste antes do abismo.',
-    dungeonId: 'd-glacier', levelReq: 22,
+    dungeonId: 'd-glacier', levelReq: 26,
   },
   {
-    id: 'c-act4', act: 4, order: 4, title: 'Ato IV — A Fenda',
+    id: 'c-act6', act: 6, order: 6, title: 'Ato VI — A Fenda',
     intro:
-      'A Fenda das Cinzas sangra caos — e o caos fura o escudo de energia. É o chefe multi-fase que separa aprendizes de estrategistas. Traga sua melhor build.',
+      'A Fenda das Cinzas sangra caos — e o caos fura o escudo de energia. O Guardião do Fosso é um chefe multi-fase que separa aprendizes de estrategistas. Traga sua melhor build.',
     outcome:
       'A Fenda se fecha atrás de você. A campanha terminou; o endgame (o Atlas das Fendas) o aguarda — mas isso é outra jornada.',
     teaches: 'Caos (fura ES) + chefe multi-fase. Conclui a campanha.',
